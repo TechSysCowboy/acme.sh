@@ -103,6 +103,7 @@ _dns_oci_mock_refresh_captures() {
   MOCK_SECURE_DEBUG_LOG="$(_dns_oci_mock_read secure_debug_log)"
   MOCK_ERROR_LOG="$(_dns_oci_mock_read error_log)"
   MOCK_INFO_LOG="$(_dns_oci_mock_read info_log)"
+  MOCK_LOOKUP_LOG="$(_dns_oci_mock_read lookup_log)"
 }
 
 _reset_oci_mocks() {
@@ -118,6 +119,7 @@ _reset_oci_mocks() {
   MOCK_SECURE_DEBUG_LOG=""
   MOCK_ERROR_LOG=""
   MOCK_INFO_LOG=""
+  MOCK_LOOKUP_LOG=""
 
   HOME="$_DNS_OCI_MOCK_DIR/home"
   mkdir -p "$HOME"
@@ -138,6 +140,42 @@ TEST_DUMMY_PRIVATE_KEY
   unset OCI_RESOURCE_PRINCIPAL_REGION
 }
 
+_mock_oci_zone_response() {
+  _mock_zone="$1"
+  _mock_status="$2"
+  _mock_code="$3"
+  _mock_id="$4"
+  _mock_message="${5:-}"
+
+  _dns_oci_mock_append zone_responses "$_mock_zone|$_mock_status|$_mock_code|$_mock_id|$_mock_message"
+}
+
+_mock_oci_zone_json() {
+  _mock_status="$1"
+  _mock_code="$2"
+  _mock_id="$3"
+  _mock_message="$4"
+  _mock_sep=""
+
+  printf '{'
+  if [ "$_mock_status" ]; then
+    printf '%s"status":%s' "$_mock_sep" "$_mock_status"
+    _mock_sep=","
+  fi
+  if [ "$_mock_code" ]; then
+    printf '%s"code":"%s"' "$_mock_sep" "$_mock_code"
+    _mock_sep=","
+  fi
+  if [ "$_mock_id" ]; then
+    printf '%s"id":"%s"' "$_mock_sep" "$_mock_id"
+    _mock_sep=","
+  fi
+  if [ "$_mock_message" ]; then
+    printf '%s"message":"%s"' "$_mock_sep" "$_mock_message"
+  fi
+  printf '}'
+}
+
 _install_oci_mock_stubs() {
   _signed_request() {
     _mock_method="$1"
@@ -147,17 +185,46 @@ _install_oci_mock_stubs() {
 
     _dns_oci_mock_append signed_requests "$_mock_method|$_mock_target|$_mock_body|$_mock_return_field"
 
-    case "$_mock_method|$_mock_target|$_mock_return_field" in
-    GET\|/20180115/zones/*\|id)
+    case "$_mock_method|$_mock_target" in
+    GET\|/20180115/zones/*)
       _mock_zone="${_mock_target#/20180115/zones/}"
+
+      if [ -f "$_DNS_OCI_MOCK_DIR/zone_responses" ]; then
+        while IFS='|' read -r _candidate_zone _candidate_status _candidate_code _candidate_id _candidate_message; do
+          if [ "$_candidate_zone" = "$_mock_zone" ]; then
+            _dns_oci_mock_append lookup_log "$_candidate_zone|$_candidate_status|$_candidate_code|$_candidate_id"
+            if [ "$_mock_return_field" = "id" ]; then
+              printf '%s' "$_candidate_id"
+            else
+              _mock_oci_zone_json "$_candidate_status" "$_candidate_code" "$_candidate_id" "$_candidate_message"
+            fi
+            return 0
+          fi
+        done <"$_DNS_OCI_MOCK_DIR/zone_responses"
+      fi
+
       for _candidate_zone in $MOCK_OCI_ZONES; do
         if [ "$_candidate_zone" = "$_mock_zone" ]; then
-          printf '%s' "ocid1.dns-zone.oc1..$_mock_zone"
+          _candidate_id="ocid1.dns-zone.oc1..$_mock_zone"
+          _dns_oci_mock_append lookup_log "$_mock_zone|200||$_candidate_id"
+          if [ "$_mock_return_field" = "id" ]; then
+            printf '%s' "$_candidate_id"
+          else
+            _mock_oci_zone_json "200" "" "$_candidate_id" ""
+          fi
           return 0
         fi
       done
+
+      _dns_oci_mock_append lookup_log "$_mock_zone|404|NotAuthorizedOrNotFound|"
+      if [ -z "$_mock_return_field" ]; then
+        _mock_oci_zone_json "404" "NotAuthorizedOrNotFound" "" ""
+      fi
       return 0
       ;;
+    esac
+
+    case "$_mock_method|$_mock_target|$_mock_return_field" in
     PATCH\|/20180115/zones/*/records\|)
       printf '%s' "{}"
       return 0
