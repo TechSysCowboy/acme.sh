@@ -120,6 +120,7 @@ _reset_oci_mocks() {
   MOCK_ERROR_LOG=""
   MOCK_INFO_LOG=""
   MOCK_LOOKUP_LOG=""
+  MOCK_OCI_PATCH_RESPONSE="{}"
 
   HOME="$_DNS_OCI_MOCK_DIR/home"
   mkdir -p "$HOME"
@@ -226,7 +227,7 @@ _install_oci_mock_stubs() {
 
     case "$_mock_method|$_mock_target|$_mock_return_field" in
     PATCH\|/20180115/zones/*/records\|)
-      printf '%s' "{}"
+      printf '%s' "$MOCK_OCI_PATCH_RESPONSE"
       return 0
       ;;
     esac
@@ -402,6 +403,12 @@ le_test_oci_lookup_ambiguous_404_falls_back() {
 
   _dns_oci_mock_refresh_captures
   _assert_contains "$MOCK_LOOKUP_LOG" "dev.example.com|404|NotAuthorizedOrNotFound|" "ambiguous delegated lookup signal missing" &&
+    _assert_contains "$MOCK_DEBUG_LOG" "dev.example.com status=404" "ambiguous lookup debug status missing" &&
+    _assert_contains "$MOCK_DEBUG_LOG" "trying example.com" "ambiguous lookup debug fallback missing" &&
+    _assert_contains "$MOCK_DEBUG_LOG" "_domain example.com" "selected parent zone debug missing" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG" "Authorization:" "normal debug leaked Authorization header" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG" "TEST_DUMMY_PRIVATE_KEY" "normal debug leaked private key" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG" "TEST_DUMMY_RPST" "normal debug leaked RPST" &&
     _assert_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/example.com/records|" "ambiguous fallback PATCH target missing" &&
     _assert_contains "$MOCK_SIGNED_REQUESTS" '"rdata":"ambiguous-fallback-value"' "ambiguous fallback TXT value missing"
 }
@@ -416,6 +423,8 @@ le_test_oci_lookup_visible_authz_fails_hard() {
 
   _dns_oci_mock_refresh_captures
   _assert_contains "$MOCK_LOOKUP_LOG" "dev.example.com|403|NotAuthorized|" "authz delegated lookup signal missing" &&
+    _assert_contains "$MOCK_ERROR_LOG" "authorization or permission failure" "authz hard-fail error missing" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG" "Authorization:" "normal debug leaked Authorization header" &&
     _assert_not_contains "$MOCK_SIGNED_REQUESTS" "GET|/20180115/zones/example.com||" "visible authz must not fall through to parent" &&
     _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/" "visible authz failure must not PATCH"
 }
@@ -431,6 +440,21 @@ le_test_oci_no_zone_failure() {
   _assert_contains "$MOCK_ERROR_LOG" "Error: DNS Zone not found" "no-zone error missing" &&
     _assert_contains "$MOCK_ERROR_LOG" "Check that the zone exists and the user has permission to read it." "no-zone hint missing" &&
     _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/" "no-zone failure must not PATCH"
+}
+
+le_test_oci_patch_failure_hints() {
+  _reset_oci_mocks
+  MOCK_OCI_ZONES="example.com"
+  MOCK_OCI_PATCH_RESPONSE=""
+
+  _assert_failure "PATCH add failure should fail" \
+    dns_oci_add "_acme-challenge.www.example.com" "patch-failure-value" &&
+    _assert_failure "PATCH remove failure should fail" \
+      dns_oci_rm "_acme-challenge.www.example.com" "patch-failure-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _assert_contains "$MOCK_ERROR_LOG" "Check that the user has permission to add records to this zone." "ADD PATCH failure hint missing" &&
+    _assert_contains "$MOCK_ERROR_LOG" "Check that the user has permission to remove records from this zone." "REMOVE PATCH failure hint missing"
 }
 
 le_test_oci_add_remove_symmetry() {
