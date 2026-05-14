@@ -46,7 +46,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 - [x] 01-01: Build a minimal OCI hook shell test harness.
 - [x] 01-02: Add characterization tests for current zone discovery and TXT add/remove paths.
-- [ ] 01-03: Add auth-branch fixtures and secure-debug assertions.
+- [x] 01-03: Add auth-branch fixtures and secure-debug assertions.
 
 ### Phase 2: Delegated Zone Discovery and TXT Payloads
 **Goal:** Make `_get_zone`, `dns_oci_add`, and `dns_oci_rm` select the longest accessible OCI DNS zone and construct TXT record names relative to that selected zone.
