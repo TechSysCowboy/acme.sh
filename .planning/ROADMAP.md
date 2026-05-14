@@ -60,7 +60,7 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 02-01: Tighten and document longest-match zone discovery behavior.
+- [x] 02-01: Tighten and document longest-match zone discovery behavior.
 - [ ] 02-02: Normalize relative TXT domain construction for add and remove.
 - [ ] 02-03: Expand mocked coverage for delegated subzones, wildcard names, fallback, and no-zone errors.
 

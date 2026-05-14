@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: OCI DNS Subzones and Resource Principal Auth
-current_phase: 2
+current_phase: 02
 current_phase_name: Delegated Zone Discovery and TXT Payloads
-current_plan: -
+current_plan: 2
 status: executing
-stopped_at: Phase 2 context gathered
-last_updated: "2026-05-14T19:53:53.942Z"
-last_activity: 2026-05-14 -- Phase 02 planning complete
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-05-14T20:02:57.628Z"
+last_activity: 2026-05-14
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 6
-  completed_plans: 3
-  percent: 50
+  completed_plans: 4
+  percent: 67
 ---
 
 # Project State
@@ -24,19 +24,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-15)
 
 **Core value:** OCI DNS validation must choose the right zone and authenticate safely without breaking existing key-based OCI users.
-**Current focus:** Phase 2 - Delegated Zone Discovery and TXT Payloads
+**Current focus:** Phase 02 — Delegated Zone Discovery and TXT Payloads
 
 ## Current Position
 
-Current Phase: 2
+Phase: 02 (Delegated Zone Discovery and TXT Payloads) — EXECUTING
+Plan: 2 of 3
+Current Phase: 02
 Current Phase Name: Delegated Zone Discovery and TXT Payloads
 Total Phases: 5
-Current Plan: -
+Current Plan: 2
 Total Plans in Phase: 3
 Status: Ready to execute
-Last activity: 2026-05-14 -- Phase 02 planning complete
-Last Activity Description: Phase 02 planning complete — 3 plans ready
-Progress: [██░░░░░░░░] 20%
+Last activity: 2026-05-14
+Last Activity Description: Phase 02 execution started
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
@@ -57,6 +59,8 @@ Progress: [██░░░░░░░░] 20%
 - Last 5 plans: -
 - Trend: Not started
 
+| Phase 02 P01 | 45min | 3 tasks | 3 files |
+
 ## Accumulated Context
 
 ### Decisions
@@ -67,6 +71,9 @@ Recent decisions affecting current work:
 - Milestone v1.0 uses mocked shell-level proof as the readiness bar; live OCI DNS validation is deferred.
 - OCI CLI config and `OCI_CLI_*` API-key auth must remain the primary path.
 - Runtime changes stay in POSIX shell and do not add SDKs or package managers.
+- [Phase 02]: Zone discovery inspects full lookup response bodies so it can parse ids and stable error signal without changing signing or auth-mode selection.
+- [Phase 02]: NotAuthorizedOrNotFound remains ambiguous and falls through to parent candidates; clear status, code, or permission signal fails hard.
+- [Phase 02]: Zone OCIDs are logged at debug2 while routine probe status stays in normal debug.
 
 ### Pending Todos
 
@@ -86,6 +93,6 @@ Items acknowledged and carried forward from milestone setup.
 
 ## Session
 
-Last Date: 2026-05-14T19:47:09.176Z
-Stopped At: Phase 2 context gathered
-Resume File: .planning/phases/02-delegated-zone-discovery-and-txt-payloads/02-CONTEXT.md
+Last Date: 2026-05-14T20:02:57.624Z
+Stopped At: Completed 02-01-PLAN.md
+Resume File: None
