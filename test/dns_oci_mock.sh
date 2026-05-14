@@ -348,6 +348,34 @@ le_test_oci_delegated_zone_add() {
     _assert_contains "$MOCK_SIGNED_REQUESTS" '"operation":"ADD"' "delegated ADD operation missing"
 }
 
+le_test_oci_apex_wildcard_add() {
+  _reset_oci_mocks
+  MOCK_OCI_ZONES="example.com"
+
+  _assert_success "apex wildcard add should succeed" \
+    dns_oci_add "_acme-challenge.example.com" "apex-wildcard-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _assert_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/example.com/records|" "apex wildcard PATCH target missing" &&
+    _assert_contains "$MOCK_SIGNED_REQUESTS" '"domain":"_acme-challenge.example.com"' "apex wildcard record domain missing" &&
+    _assert_contains "$MOCK_SIGNED_REQUESTS" '"rtype":"TXT"' "apex wildcard TXT rtype missing" &&
+    _assert_contains "$MOCK_SIGNED_REQUESTS" '"operation":"ADD"' "apex wildcard ADD operation missing"
+}
+
+le_test_oci_delegated_wildcard_add() {
+  _reset_oci_mocks
+  MOCK_OCI_ZONES="dev.example.com example.com"
+
+  _assert_success "delegated wildcard add should succeed" \
+    dns_oci_add "_acme-challenge.dev.example.com" "delegated-wildcard-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _assert_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/dev.example.com/records|" "delegated wildcard PATCH target missing" &&
+    _assert_contains "$MOCK_SIGNED_REQUESTS" '"domain":"_acme-challenge.dev.example.com"' "delegated wildcard record domain missing" &&
+    _assert_contains "$MOCK_SIGNED_REQUESTS" '"rtype":"TXT"' "delegated wildcard TXT rtype missing" &&
+    _assert_contains "$MOCK_SIGNED_REQUESTS" '"operation":"ADD"' "delegated wildcard ADD operation missing"
+}
+
 le_test_oci_parent_fallback() {
   _reset_oci_mocks
   MOCK_OCI_ZONES="example.com"
