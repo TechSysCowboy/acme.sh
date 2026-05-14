@@ -6,7 +6,7 @@
 
 **Runner:**
 - GitHub Actions is the primary runner. Workflows live in `.github/workflows/*.yml`.
-- No in-repo unit test runner is detected. There are no `*.test.*`, `*.spec.*`, or `.bats` files in the runtime source tree.
+- `test/dns_oci_mock.sh` is a repo-local POSIX shell harness for mocked OCI DNS hook characterization. It uses `le_test_*` cases and `CASE` selection, but no package manager, Bats, Python, or Node runner.
 - Integration and platform tests use the external `acmetest` repository cloned by workflows such as `.github/workflows/Ubuntu.yml`, `.github/workflows/Linux.yml`, `.github/workflows/DNS.yml`, `.github/workflows/PebbleStrict.yml`, and `.github/workflows/Windows.yml`.
 - Static quality gates use ShellCheck and shfmt in `.github/workflows/shellcheck.yml`.
 
@@ -20,6 +20,8 @@
 ```bash
 shellcheck -e SC2181 -e SC2089 **/*.sh              # Run shell lint gate used by .github/workflows/shellcheck.yml
 shfmt -l -w -i 2 . && git diff --exit-code          # Run formatting gate used by .github/workflows/shellcheck.yml
+CASE=le_test_oci_harness_bootstrap sh test/dns_oci_mock.sh
+sh test/dns_oci_mock.sh                             # Run full mocked OCI DNS hook characterization harness
 cd .. && git clone --depth=1 https://github.com/acmesh-official/acmetest.git && cp -r acme.sh acmetest/
 cd ../acmetest && ./letest.sh                       # Run external integration harness for the copied repo
 cd ../acmetest && ./rundocker.sh testplat ubuntu:latest
@@ -30,7 +32,8 @@ cd ../acmetest && ./rundocker.sh testall            # DNS API test pattern used 
 
 **Location:**
 - CI workflows are under `.github/workflows/`.
-- Runtime shell code under `acme.sh`, `dnsapi/`, `deploy/`, and `notify/` has no co-located test files.
+- Runtime shell code under `acme.sh`, `dnsapi/`, `deploy/`, and `notify/` mostly relies on external integration tests.
+- Focused repo-local mock harnesses live under `test/`; currently `test/dns_oci_mock.sh` covers OCI DNS hook behavior without live OCI DNS or credentials.
 - External integration tests are pulled from `https://github.com/acmesh-official/acmetest.git` during CI rather than committed in this repository.
 
 **Naming:**

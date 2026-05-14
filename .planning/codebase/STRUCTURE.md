@@ -13,6 +13,7 @@ acme.sh/
 |-- dnsapi/              # DNS-01 provider hook modules
 |-- deploy/              # Certificate deployment hook modules
 |-- notify/              # Renewal notification hook modules
+|-- test/                # Repo-local mocked shell harnesses for focused provider characterization
 |-- .github/             # GitHub issue/PR templates and Actions workflows
 |-- .codex/              # GSD/Codex workflow skills, agents, hooks, templates, and references
 `-- .planning/           # GSD planning outputs; codebase maps are written under `.planning/codebase/`
@@ -42,6 +43,12 @@ acme.sh/
 - Contains: 26 files, each exposing `<channel>_send()`.
 - Key files: `notify/mail.sh`, `notify/slack.sh`, `notify/smtp.sh`, `notify/telegram.sh`, `notify/aws_ses.sh`.
 - Add notification integrations here. A file named `notify/example.sh` must define `example_send()`.
+
+**`test/`:**
+- Purpose: Repo-local shell proof harnesses for focused provider behavior that must stay credential-free.
+- Contains: `test/dns_oci_mock.sh` for OCI DNS hook characterization.
+- Key files: `test/dns_oci_mock.sh`.
+- Runtime note: These scripts are local validation support; `acme.sh` does not source them during normal operation.
 
 **`.github/`:**
 - Purpose: GitHub community automation and CI.
@@ -109,6 +116,7 @@ acme.sh/
 - `notify/smtp.sh`: SMTP notification hook with curl/Python transport.
 
 **Testing and CI:**
+- `test/dns_oci_mock.sh`: Repo-local mocked OCI DNS hook harness with `le_test_*` cases and `CASE` selection.
 - `.github/workflows/shellcheck.yml`: Runs shellcheck over `**/*.sh` and shfmt with two-space indentation.
 - `.github/workflows/DNS.yml`: Runs DNS API tests through `acmetest` with provider secrets.
 - `.github/workflows/PebbleStrict.yml`: Runs strict Pebble ACME tests, including IP certificate path.
