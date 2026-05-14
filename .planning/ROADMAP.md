@@ -44,7 +44,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans:** 3 plans
 
 Plans:
-- [ ] 01-01: Build a minimal OCI hook shell test harness.
+- [x] 01-01: Build a minimal OCI hook shell test harness.
 - [ ] 01-02: Add characterization tests for current zone discovery and TXT add/remove paths.
 - [ ] 01-03: Add auth-branch fixtures and secure-debug assertions.
 
