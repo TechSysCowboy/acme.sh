@@ -37,7 +37,9 @@ dns_oci_add() {
 
   if _get_oci_zone; then
 
-    _add_record_body="{\"items\":[{\"domain\":\"$_oci_record_domain\",\"rdata\":\"$_rdata\",\"rtype\":\"TXT\",\"ttl\": 30,\"operation\":\"ADD\"}]}"
+    _oci_record_domain_json=$(_oci_json_escape "$_oci_record_domain")
+    _rdata_json=$(_oci_json_escape "$_rdata")
+    _add_record_body="{\"items\":[{\"domain\":\"$_oci_record_domain_json\",\"rdata\":\"$_rdata_json\",\"rtype\":\"TXT\",\"ttl\": 30,\"operation\":\"ADD\"}]}"
     response=$(_signed_request "PATCH" "/20180115/zones/${_domain}/records" "$_add_record_body")
     if [ "$response" ]; then
       _info "Success: added TXT record for $_oci_record_domain."
@@ -59,7 +61,9 @@ dns_oci_rm() {
 
   if _get_oci_zone; then
 
-    _remove_record_body="{\"items\":[{\"domain\":\"$_oci_record_domain\",\"rdata\":\"$_rdata\",\"rtype\":\"TXT\",\"operation\":\"REMOVE\"}]}"
+    _oci_record_domain_json=$(_oci_json_escape "$_oci_record_domain")
+    _rdata_json=$(_oci_json_escape "$_rdata")
+    _remove_record_body="{\"items\":[{\"domain\":\"$_oci_record_domain_json\",\"rdata\":\"$_rdata_json\",\"rtype\":\"TXT\",\"operation\":\"REMOVE\"}]}"
     response=$(_signed_request "PATCH" "/20180115/zones/${_domain}/records" "$_remove_record_body")
     if [ "$response" ]; then
       _info "Success: removed TXT record for $_oci_record_domain."
@@ -282,6 +286,10 @@ _oci_authz_error() {
   esac
 
   return 1
+}
+
+_oci_json_escape() {
+  printf "%s" "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
 
 #Usage: privatekey

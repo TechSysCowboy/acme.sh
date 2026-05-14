@@ -455,6 +455,31 @@ le_test_oci_add_remove_symmetry() {
     _assert_contains "$MOCK_INFO_LOG" "Success: removed TXT record for _acme-challenge.www.example.com." "REMOVE success text changed"
 }
 
+le_test_oci_txt_value_json_escape() {
+  _reset_oci_mocks
+  MOCK_OCI_ZONES="example.com"
+
+  _assert_success "TXT value JSON escaping should succeed" \
+    dns_oci_add "_acme-challenge.www.example.com" 'token "quoted" backslash \ value' || return 1
+
+  _dns_oci_mock_refresh_captures
+  _assert_contains "$MOCK_SIGNED_REQUESTS" '"rdata":"token \"quoted\" backslash \\ value"' "TXT value JSON escaping missing" &&
+    _assert_contains "$MOCK_SIGNED_REQUESTS" '"operation":"ADD"' "TXT escape ADD operation missing"
+}
+
+le_test_oci_record_domain_json_escape() {
+  _reset_oci_mocks
+  MOCK_OCI_ZONES="example.com"
+
+  _assert_success "record domain JSON escaping should preserve realistic hook input" \
+    dns_oci_add "_acme-challenge.www-01.example.com" "domain-escape-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _assert_contains "$MOCK_SIGNED_REQUESTS" '"domain":"_acme-challenge.www-01.example.com"' "record domain JSON text missing" &&
+    _assert_contains "$MOCK_SIGNED_REQUESTS" '"rdata":"domain-escape-value"' "record domain test TXT value missing" &&
+    _assert_contains "$MOCK_SIGNED_REQUESTS" '"operation":"ADD"' "record domain escape ADD operation missing"
+}
+
 le_test_oci_signed_request_return_field() {
   _reset_oci_mocks
 
