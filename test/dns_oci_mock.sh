@@ -443,11 +443,16 @@ le_test_oci_add_remove_symmetry() {
       dns_oci_rm "_acme-challenge.www.example.com" "symmetric-value" || return 1
 
   _dns_oci_mock_refresh_captures
+  _remove_request=$(printf "%s\n" "$MOCK_SIGNED_REQUESTS" | grep '"operation":"REMOVE"')
   _assert_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/example.com/records|" "symmetry PATCH target missing" &&
     _assert_contains "$MOCK_SIGNED_REQUESTS" '"domain":"_acme-challenge.www.example.com"' "symmetry record domain missing" &&
     _assert_contains "$MOCK_SIGNED_REQUESTS" '"rdata":"symmetric-value"' "symmetry TXT value missing" &&
+    _assert_contains "$MOCK_SIGNED_REQUESTS" '"ttl": 30' "ADD payload TTL missing" &&
     _assert_contains "$MOCK_SIGNED_REQUESTS" '"operation":"ADD"' "symmetry ADD operation missing" &&
-    _assert_contains "$MOCK_SIGNED_REQUESTS" '"operation":"REMOVE"' "symmetry REMOVE operation missing"
+    _assert_contains "$MOCK_SIGNED_REQUESTS" '"operation":"REMOVE"' "symmetry REMOVE operation missing" &&
+    _assert_not_contains "$_remove_request" '"ttl":' "REMOVE payload must not include TTL" &&
+    _assert_contains "$MOCK_INFO_LOG" "Success: added TXT record for _acme-challenge.www.example.com." "ADD success text changed" &&
+    _assert_contains "$MOCK_INFO_LOG" "Success: removed TXT record for _acme-challenge.www.example.com." "REMOVE success text changed"
 }
 
 le_test_oci_signed_request_return_field() {

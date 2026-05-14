@@ -37,12 +37,12 @@ dns_oci_add() {
 
   if _get_oci_zone; then
 
-    _add_record_body="{\"items\":[{\"domain\":\"${_sub_domain}.${_domain}\",\"rdata\":\"$_rdata\",\"rtype\":\"TXT\",\"ttl\": 30,\"operation\":\"ADD\"}]}"
+    _add_record_body="{\"items\":[{\"domain\":\"$_oci_record_domain\",\"rdata\":\"$_rdata\",\"rtype\":\"TXT\",\"ttl\": 30,\"operation\":\"ADD\"}]}"
     response=$(_signed_request "PATCH" "/20180115/zones/${_domain}/records" "$_add_record_body")
     if [ "$response" ]; then
-      _info "Success: added TXT record for ${_sub_domain}.${_domain}."
+      _info "Success: added TXT record for $_oci_record_domain."
     else
-      _err "Error: failed to add TXT record for ${_sub_domain}.${_domain}."
+      _err "Error: failed to add TXT record for $_oci_record_domain."
       _err "Check that the user has permission to add records to this zone."
       return 1
     fi
@@ -59,12 +59,12 @@ dns_oci_rm() {
 
   if _get_oci_zone; then
 
-    _remove_record_body="{\"items\":[{\"domain\":\"${_sub_domain}.${_domain}\",\"rdata\":\"$_rdata\",\"rtype\":\"TXT\",\"operation\":\"REMOVE\"}]}"
+    _remove_record_body="{\"items\":[{\"domain\":\"$_oci_record_domain\",\"rdata\":\"$_rdata\",\"rtype\":\"TXT\",\"operation\":\"REMOVE\"}]}"
     response=$(_signed_request "PATCH" "/20180115/zones/${_domain}/records" "$_remove_record_body")
     if [ "$response" ]; then
-      _info "Success: removed TXT record for ${_sub_domain}.${_domain}."
+      _info "Success: removed TXT record for $_oci_record_domain."
     else
-      _err "Error: failed to remove TXT record for ${_sub_domain}.${_domain}."
+      _err "Error: failed to remove TXT record for $_oci_record_domain."
       _err "Check that the user has permission to remove records from this zone."
       return 1
     fi
@@ -188,6 +188,7 @@ _oci_config() {
 # _sub_domain=_acme-challenge.www
 # _domain=domain.com
 # _domain_ociid=ocid1.dns-zone.oc1..
+# OCI RecordDetails.domain is the full record FQDN, stored in _oci_record_domain.
 _get_zone() {
   domain=$1
   i=1
@@ -207,10 +208,12 @@ _get_zone() {
     if [ "$_domain_id" ]; then
       _sub_domain=$(printf "%s" "$domain" | cut -d . -f 1-"$p")
       _domain=$h
+      _oci_record_domain="${_sub_domain}.${_domain}"
 
       _debug2 _domain_id "$_domain_id"
       _debug _sub_domain "$_sub_domain"
       _debug _domain "$_domain"
+      _debug _oci_record_domain "$_oci_record_domain"
       return 0
     fi
 
