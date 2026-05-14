@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: OCI DNS Subzones and Resource Principal Auth
 current_phase: 02
 current_phase_name: Delegated Zone Discovery and TXT Payloads
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-05-14T20:02:57.628Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-05-14T20:07:33.800Z"
 last_activity: 2026-05-14
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 6
-  completed_plans: 4
-  percent: 67
+  completed_plans: 5
+  percent: 83
 ---
 
 # Project State
@@ -29,16 +29,16 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 ## Current Position
 
 Phase: 02 (Delegated Zone Discovery and TXT Payloads) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Current Phase: 02
 Current Phase Name: Delegated Zone Discovery and TXT Payloads
 Total Phases: 5
-Current Plan: 2
+Current Plan: 3
 Total Plans in Phase: 3
 Status: Ready to execute
 Last activity: 2026-05-14
 Last Activity Description: Phase 02 execution started
-Progress: [███████░░░] 67%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Progress: [███████░░░] 67%
 - Trend: Not started
 
 | Phase 02 P01 | 45min | 3 tasks | 3 files |
+| Phase 02 P02 | 20min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,9 @@ Recent decisions affecting current work:
 - [Phase 02]: Zone discovery inspects full lookup response bodies so it can parse ids and stable error signal without changing signing or auth-mode selection.
 - [Phase 02]: NotAuthorizedOrNotFound remains ambiguous and falls through to parent candidates; clear status, code, or permission signal fails hard.
 - [Phase 02]: Zone OCIDs are logged at debug2 while routine probe status stays in normal debug.
+- [Phase 02]: ADD and REMOVE keep separate payload strings but consume the same _oci_record_domain selected during zone lookup.
+- [Phase 02]: OCI PATCH RecordDetails.domain remains a full FQDN; Phase 2 did not switch to a relative domain payload.
+- [Phase 02]: JSON escaping is local to dns_oci.sh and covers quote/backslash handling for domain and TXT rdata values.
 
 ### Pending Todos
 
@@ -93,6 +97,6 @@ Items acknowledged and carried forward from milestone setup.
 
 ## Session
 
-Last Date: 2026-05-14T20:02:57.624Z
-Stopped At: Completed 02-01-PLAN.md
+Last Date: 2026-05-14T20:07:33.797Z
+Stopped At: Completed 02-02-PLAN.md
 Resume File: None

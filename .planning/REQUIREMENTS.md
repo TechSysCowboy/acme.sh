@@ -13,8 +13,8 @@
 
 ### TXT Record Payloads
 
-- [ ] **TXT-01**: `dns_oci_add` sends the TXT record domain relative to the selected OCI DNS zone for parent-zone, delegated-subzone, and wildcard challenge names.
-- [ ] **TXT-02**: `dns_oci_rm` removes the same relative TXT record that `dns_oci_add` created for parent-zone, delegated-subzone, and wildcard challenge names.
+- [x] **TXT-01**: `dns_oci_add` sends the TXT record domain relative to the selected OCI DNS zone for parent-zone, delegated-subzone, and wildcard challenge names.
+- [x] **TXT-02**: `dns_oci_rm` removes the same relative TXT record that `dns_oci_add` created for parent-zone, delegated-subzone, and wildcard challenge names.
 - [x] **TXT-03**: Add/remove success and failure messages identify the selected record name without exposing secret material.
 
 ### Authentication Selection
@@ -71,8 +71,8 @@ Deferred to future release. Tracked but not in the current roadmap.
 | ZONE-01 | Phase 2 | Complete |
 | ZONE-02 | Phase 2 | Complete |
 | ZONE-03 | Phase 2 | Complete |
-| TXT-01 | Phase 2 | Pending |
-| TXT-02 | Phase 2 | Pending |
+| TXT-01 | Phase 2 | Complete |
+| TXT-02 | Phase 2 | Complete |
 | TXT-03 | Phase 2 | Complete |
 | AUTH-01 | Phase 3 | Pending |
 | AUTH-02 | Phase 3 | Pending |
