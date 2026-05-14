@@ -45,7 +45,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 - [x] 01-01: Build a minimal OCI hook shell test harness.
-- [ ] 01-02: Add characterization tests for current zone discovery and TXT add/remove paths.
+- [x] 01-02: Add characterization tests for current zone discovery and TXT add/remove paths.
 - [ ] 01-03: Add auth-branch fixtures and secure-debug assertions.
 
 ### Phase 2: Delegated Zone Discovery and TXT Payloads
