@@ -17,6 +17,21 @@ other OCI-hosted automation.
 OCI DNS validation must choose the right zone and authenticate safely without
 breaking existing key-based OCI users.
 
+## Current Milestone: v1.0 OCI DNS Subzones and Resource Principal Auth
+
+**Goal:** Make the existing OCI DNS hook correctly handle delegated subzones and
+support keyless OCI resource-principal authentication without regressing current
+OCI CLI/API-key users.
+
+**Target features:**
+- Longest matching accessible OCI DNS zone discovery for delegated subzones.
+- Correct TXT add/remove payloads relative to the selected OCI DNS zone.
+- Authentication selection that keeps OCI CLI/API-key auth first and falls back
+  to resource principal auth only when key-based configuration is unavailable.
+- Secure resource principal request signing that avoids persisting ephemeral
+  token or private-key material.
+- User-facing documentation and mocked shell-level proof for the new behavior.
+
 ## Requirements
 
 ### Validated
@@ -149,4 +164,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-15 after initialization*
+*Last updated: 2026-05-15 after milestone v1.0 initialization*
