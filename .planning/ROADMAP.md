@@ -24,7 +24,7 @@ OCI CLI/API-key users.
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: OCI Hook Characterization and Test Harness** - Create a local mocked proof harness for the OCI DNS hook.
+- [x] **Phase 1: OCI Hook Characterization and Test Harness** - Create a local mocked proof harness for the OCI DNS hook.
 - [ ] **Phase 2: Delegated Zone Discovery and TXT Payloads** - Implement and prove longest-match zone discovery plus relative TXT payloads.
 - [ ] **Phase 3: Authentication Selection Refactor** - Preserve current OCI API-key auth while creating a clean fallback point for resource principal auth.
 - [ ] **Phase 4: Resource Principal Signing** - Add secure resource-principal signing for OCI DNS API requests.
@@ -120,7 +120,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. OCI Hook Characterization and Test Harness | 0/3 | Not started | - |
+| 1. OCI Hook Characterization and Test Harness | 3/3 | Complete | 2026-05-14 |
 | 2. Delegated Zone Discovery and TXT Payloads | 0/3 | Not started | - |
 | 3. Authentication Selection Refactor | 0/3 | Not started | - |
 | 4. Resource Principal Signing | 0/4 | Not started | - |
