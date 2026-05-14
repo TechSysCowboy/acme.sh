@@ -290,7 +290,7 @@ _signed_request() {
 
   _ret="$?"
   if [ "$_return_field" ]; then
-    _response="$(echo "$_response" | sed 's/\\\"//g'))"
+    _response="$(echo "$_response" | sed 's/\\\"//g')"
     _return=$(echo "${_response}" | _egrep_o "\"$_return_field\"\\s*:\\s*\"[^\"]*\"" | _head_n 1 | cut -d : -f 2 | tr -d "\"")
   else
     _return="$_response"
