@@ -83,7 +83,11 @@ _get_oci_zone() {
   fi
 
   if ! _get_zone "$_fqdn"; then
+    if [ "$_oci_zone_lookup_authz_error" ]; then
+      return 1
+    fi
     _err "Error: DNS Zone not found for $_fqdn in $OCI_CLI_TENANCY"
+    _err "Check that the zone exists and the user has permission to read it."
     return 1
   fi
 
@@ -188,6 +192,7 @@ _get_zone() {
   domain=$1
   i=1
   p=1
+  _oci_zone_lookup_authz_error=""
 
   while true; do
     h=$(printf "%s" "$domain" | cut -d . -f "$i"-100)
@@ -197,22 +202,83 @@ _get_zone() {
       return 1
     fi
 
-    _domain_id=$(_signed_request "GET" "/20180115/zones/$h" "" "id")
+    _oci_zone_response=$(_signed_request "GET" "/20180115/zones/$h")
+    _domain_id=$(_oci_json_string "id" "$_oci_zone_response")
     if [ "$_domain_id" ]; then
       _sub_domain=$(printf "%s" "$domain" | cut -d . -f 1-"$p")
       _domain=$h
 
-      _debug _domain_id "$_domain_id"
+      _debug2 _domain_id "$_domain_id"
       _debug _sub_domain "$_sub_domain"
       _debug _domain "$_domain"
       return 0
     fi
 
+    _oci_status=$(_oci_json_number "status" "$_oci_zone_response")
+    _oci_error_code=$(_oci_json_string "code" "$_oci_zone_response")
+    _oci_error_message=$(_oci_json_string "message" "$_oci_zone_response")
+
+    if _oci_authz_error "$_oci_status" "$_oci_error_code" "$_oci_error_message"; then
+      _oci_zone_lookup_authz_error=1
+      _err "Error: OCI returned an authorization or permission failure for $h."
+      return 1
+    fi
+
+    _next_i=$(_math "$i" + 1)
+    _next_h=$(printf "%s" "$domain" | cut -d . -f "$_next_i"-100)
+    if [ "$_next_h" ]; then
+      _debug "OCI zone lookup result" "$h status=${_oci_status:-unknown} code=${_oci_error_code:-none}; trying $_next_h"
+    fi
+
     p=$i
-    i=$(_math "$i" + 1)
+    i=$_next_i
   done
   return 1
 
+}
+
+_oci_json_string() {
+  _oci_json_field="$1"
+  _oci_json_body="$2"
+
+  _oci_json_match=$(printf "%s" "$_oci_json_body" | sed 's/\\\"//g' | _egrep_o "\"$_oci_json_field\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" | _head_n 1)
+  if [ "$_oci_json_match" ]; then
+    printf "%s" "$_oci_json_match" | sed 's/^[^:]*:[[:space:]]*"//; s/"$//'
+  fi
+}
+
+_oci_json_number() {
+  _oci_json_field="$1"
+  _oci_json_body="$2"
+
+  _oci_json_match=$(printf "%s" "$_oci_json_body" | sed 's/\\\"//g' | _egrep_o "\"$_oci_json_field\"[[:space:]]*:[[:space:]]*[0-9][0-9]*" | _head_n 1)
+  if [ "$_oci_json_match" ]; then
+    printf "%s" "$_oci_json_match" | sed 's/^[^:]*:[[:space:]]*//'
+  fi
+}
+
+_oci_authz_error() {
+  _oci_status="$1"
+  _oci_code="$2"
+  _oci_message="$3"
+
+  case "$_oci_code" in
+  *NotAuthorizedOrNotFound*) return 1 ;;
+  esac
+
+  case "$_oci_status" in
+  401 | 403) return 0 ;;
+  esac
+
+  case "$_oci_code" in
+  *NotAuthenticated* | *NotAuthorized* | *Unauthorized* | *Forbidden* | *Permission* | *permission*) return 0 ;;
+  esac
+
+  case "$_oci_message" in
+  *"not authorized"* | *"Not authorized"* | *NotAuthorized* | *"permission denied"* | *"Permission denied"* | *Forbidden* | *forbidden* | *Unauthorized* | *unauthorized*) return 0 ;;
+  esac
+
+  return 1
 }
 
 #Usage: privatekey

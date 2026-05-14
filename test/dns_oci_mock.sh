@@ -325,7 +325,7 @@ le_test_oci_parent_zone_add() {
     dns_oci_add "_acme-challenge.www.example.com" "parent-value" || return 1
 
   _dns_oci_mock_refresh_captures
-  _assert_contains "$MOCK_SIGNED_REQUESTS" "GET|/20180115/zones/example.com||id" "parent zone lookup missing" &&
+  _assert_contains "$MOCK_SIGNED_REQUESTS" "GET|/20180115/zones/example.com||" "parent zone lookup missing" &&
     _assert_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/example.com/records|" "parent zone PATCH target missing" &&
     _assert_contains "$MOCK_SIGNED_REQUESTS" '"domain":"_acme-challenge.www.example.com"' "parent record domain missing" &&
     _assert_contains "$MOCK_SIGNED_REQUESTS" '"rtype":"TXT"' "TXT rtype missing" &&
@@ -341,7 +341,7 @@ le_test_oci_delegated_zone_add() {
     dns_oci_add "_acme-challenge.www.dev.example.com" "delegated-value" || return 1
 
   _dns_oci_mock_refresh_captures
-  _assert_contains "$MOCK_SIGNED_REQUESTS" "GET|/20180115/zones/dev.example.com||id" "delegated zone lookup missing" &&
+  _assert_contains "$MOCK_SIGNED_REQUESTS" "GET|/20180115/zones/dev.example.com||" "delegated zone lookup missing" &&
     _assert_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/dev.example.com/records|" "delegated PATCH target missing" &&
     _assert_contains "$MOCK_SIGNED_REQUESTS" '"domain":"_acme-challenge.www.dev.example.com"' "delegated record domain missing" &&
     _assert_contains "$MOCK_SIGNED_REQUESTS" '"rdata":"delegated-value"' "delegated TXT value missing" &&
@@ -356,12 +356,40 @@ le_test_oci_parent_fallback() {
     dns_oci_add "_acme-challenge.www.dev.example.com" "fallback-value" || return 1
 
   _dns_oci_mock_refresh_captures
-  _assert_contains "$MOCK_SIGNED_REQUESTS" "GET|/20180115/zones/dev.example.com||id" "delegated lookup attempt missing" &&
-    _assert_contains "$MOCK_SIGNED_REQUESTS" "GET|/20180115/zones/example.com||id" "parent fallback lookup missing" &&
+  _assert_contains "$MOCK_SIGNED_REQUESTS" "GET|/20180115/zones/dev.example.com||" "delegated lookup attempt missing" &&
+    _assert_contains "$MOCK_SIGNED_REQUESTS" "GET|/20180115/zones/example.com||" "parent fallback lookup missing" &&
     _assert_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/example.com/records|" "parent fallback PATCH target missing" &&
     _assert_contains "$MOCK_SIGNED_REQUESTS" '"domain":"_acme-challenge.www.dev.example.com"' "fallback record domain missing" &&
     _assert_contains "$MOCK_SIGNED_REQUESTS" '"rdata":"fallback-value"' "fallback TXT value missing" &&
     _assert_contains "$MOCK_SIGNED_REQUESTS" '"operation":"ADD"' "fallback ADD operation missing"
+}
+
+le_test_oci_lookup_ambiguous_404_falls_back() {
+  _reset_oci_mocks
+  _mock_oci_zone_response "dev.example.com" "404" "NotAuthorizedOrNotFound" "" "ambiguous lookup miss"
+  MOCK_OCI_ZONES="example.com"
+
+  _assert_success "ambiguous 404 lookup should fall back to parent" \
+    dns_oci_add "_acme-challenge.www.dev.example.com" "ambiguous-fallback-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _assert_contains "$MOCK_LOOKUP_LOG" "dev.example.com|404|NotAuthorizedOrNotFound|" "ambiguous delegated lookup signal missing" &&
+    _assert_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/example.com/records|" "ambiguous fallback PATCH target missing" &&
+    _assert_contains "$MOCK_SIGNED_REQUESTS" '"rdata":"ambiguous-fallback-value"' "ambiguous fallback TXT value missing"
+}
+
+le_test_oci_lookup_visible_authz_fails_hard() {
+  _reset_oci_mocks
+  _mock_oci_zone_response "dev.example.com" "403" "NotAuthorized" "" "caller lacks zone read permission"
+  MOCK_OCI_ZONES="example.com"
+
+  _assert_failure "visible authz lookup should fail hard" \
+    dns_oci_add "_acme-challenge.www.dev.example.com" "authz-failure-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _assert_contains "$MOCK_LOOKUP_LOG" "dev.example.com|403|NotAuthorized|" "authz delegated lookup signal missing" &&
+    _assert_not_contains "$MOCK_SIGNED_REQUESTS" "GET|/20180115/zones/example.com||" "visible authz must not fall through to parent" &&
+    _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/" "visible authz failure must not PATCH"
 }
 
 le_test_oci_no_zone_failure() {
@@ -373,6 +401,7 @@ le_test_oci_no_zone_failure() {
 
   _dns_oci_mock_refresh_captures
   _assert_contains "$MOCK_ERROR_LOG" "Error: DNS Zone not found" "no-zone error missing" &&
+    _assert_contains "$MOCK_ERROR_LOG" "Check that the zone exists and the user has permission to read it." "no-zone hint missing" &&
     _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/" "no-zone failure must not PATCH"
 }
 
