@@ -51,6 +51,9 @@ OCI CLI/API-key users.
 - ✓ Project validation relies on ShellCheck, shfmt, GitHub Actions, and external
   acmetest-style integration workflows rather than an in-repo unit test runner
   — existing
+- ✓ Mocked shell-level tests cover zone discovery, TXT payload construction,
+  auth selection, and signing-path branching without requiring live OCI DNS
+  resources — validated in Phase 1
 
 ### Active
 
@@ -71,9 +74,6 @@ OCI CLI/API-key users.
 - [ ] The OCI hook documents the supported authentication order, required OCI
   policies, and delegated-subzone behavior in provider metadata and user-facing
   docs.
-- [ ] Mocked shell-level tests cover zone discovery, TXT payload construction,
-  auth selection, and signing-path branching without requiring live OCI DNS
-  resources.
 
 ### Out of Scope
 
@@ -144,7 +144,7 @@ OCI hook and any local test harness.
 |----------|-----------|---------|
 | Use the longest matching accessible OCI DNS zone for delegated subzones | `*.x.domain.com` should target `x.domain.com` when that zone exists and is accessible, not accidentally mutate the parent `domain.com` zone | — Pending |
 | Keep OCI CLI key/config auth first and use resource principal auth as fallback | Preserves current user behavior while enabling keyless OCI-hosted automation | — Pending |
-| Use mocked shell-level tests as the readiness bar | Validates zone discovery and auth branching without requiring live OCI resources or secrets in CI | — Pending |
+| Use mocked shell-level tests as the readiness bar | Validates zone discovery and auth branching without requiring live OCI resources or secrets in CI | Validated in Phase 1 |
 
 ## Evolution
 
@@ -164,4 +164,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-15 after milestone v1.0 initialization*
+*Last updated: 2026-05-15 after Phase 1 verification*
