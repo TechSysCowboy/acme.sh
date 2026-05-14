@@ -119,6 +119,9 @@ _reset_oci_mocks() {
   MOCK_ERROR_LOG=""
   MOCK_INFO_LOG=""
 
+  HOME="$_DNS_OCI_MOCK_DIR/home"
+  mkdir -p "$HOME"
+
   OCI_CLI_TENANCY="ocid1.tenancy.oc1..test"
   OCI_CLI_USER="ocid1.user.oc1..test"
   OCI_CLI_REGION="us-ashburn-1"
@@ -355,6 +358,87 @@ le_test_oci_signed_request_return_field() {
   _install_oci_mock_stubs
 
   _assert_eq "ocid1.dns-zone.oc1..example" "$_actual" "return-field parser should not append stray characters"
+}
+
+le_test_oci_auth_api_key() {
+  _reset_oci_mocks
+  MOCK_OCI_ZONES="example.com"
+
+  _assert_success "API-key auth should reach mocked PATCH" \
+    dns_oci_add "_acme-challenge.www.example.com" "api-key-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _assert_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/example.com/records|" "API-key auth did not reach PATCH" &&
+    _assert_contains "$MOCK_SAVED_KEYS" "OCI_CLI_TENANCY=ocid1.tenancy.oc1..test" "tenancy was not persisted" &&
+    _assert_contains "$MOCK_SAVED_KEYS" "OCI_CLI_USER=ocid1.user.oc1..test" "user was not persisted" &&
+    _assert_contains "$MOCK_SAVED_KEYS" "OCI_CLI_REGION=us-ashburn-1" "region was not persisted" &&
+    _assert_contains "$MOCK_SAVED_KEYS" "OCI_CLI_KEY=-----BEGIN PRIVATE KEY-----" "key was not persisted" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_RESOURCE_PRINCIPAL" "resource principal values must not be persisted by API-key auth" &&
+    _assert_eq "" "$MOCK_READINI_KEYS" "API-key env path should not read real OCI config"
+}
+
+le_test_oci_auth_missing() {
+  _reset_oci_mocks
+  MOCK_OCI_ZONES="example.com"
+  OCI_CLI_KEY=""
+  OCI_CLI_KEY_FILE=""
+  unset OCI_RESOURCE_PRINCIPAL_VERSION
+  unset OCI_RESOURCE_PRINCIPAL_RPST
+  unset OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM
+  unset OCI_RESOURCE_PRINCIPAL_REGION
+
+  _assert_failure "missing key material should fail before PATCH" \
+    dns_oci_add "_acme-challenge.www.example.com" "missing-auth-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _assert_contains "$MOCK_ERROR_LOG" "unable to find key file path" "missing key-file error absent" &&
+    _assert_contains "$MOCK_ERROR_LOG" "unable to load private API signing key" "missing key-material error absent" &&
+    _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/" "missing auth must not PATCH"
+}
+
+le_test_oci_auth_resource_principal_current_state() {
+  _reset_oci_mocks
+  MOCK_OCI_ZONES="example.com"
+  unset OCI_CLI_TENANCY
+  unset OCI_CLI_USER
+  unset OCI_CLI_REGION
+  unset OCI_CLI_KEY
+  unset OCI_CLI_KEY_FILE
+  OCI_RESOURCE_PRINCIPAL_VERSION="2.2"
+  OCI_RESOURCE_PRINCIPAL_RPST="/tmp/nonexistent-rpst"
+  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM="/tmp/nonexistent-private.pem"
+  OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
+
+  # Phase 3/4 must change this fixture from current-failure characterization
+  # to fallback-success proof when resource principal auth is implemented.
+  _assert_failure "resource-principal-only auth should fail before Phase 3/4 fallback" \
+    dns_oci_add "_acme-challenge.www.example.com" "rp-current-state-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _assert_contains "$MOCK_ERROR_LOG" "unable to read OCI_CLI_TENANCY" "current-state missing tenancy error absent" &&
+    _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/" "resource-principal current state must not PATCH" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_RESOURCE_PRINCIPAL_RPST" "RPST path must not be saved" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM" "resource principal private key path must not be saved"
+}
+
+le_test_oci_secure_debug_boundaries() {
+  _reset_oci_mocks
+  _dummy_auth_header="Authorization: Signature ST\$TEST_DUMMY_RPST"
+
+  _debug "normal" "ordinary diagnostic"
+  _secure_debug "private-key" "TEST_DUMMY_PRIVATE_KEY"
+  _secure_debug2 "rpst" "TEST_DUMMY_RPST"
+  _secure_debug3 "authorization" "$_dummy_auth_header"
+
+  _dns_oci_mock_refresh_captures
+  _assert_not_contains "$MOCK_DEBUG_LOG" "TEST_DUMMY_PRIVATE_KEY" "normal debug leaked private key" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG" "TEST_DUMMY_RPST" "normal debug leaked RPST" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG" "Authorization:" "normal debug leaked Authorization header" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG" 'ST$' "normal debug leaked ST token marker" &&
+    _assert_contains "$MOCK_SECURE_DEBUG_LOG" "TEST_DUMMY_PRIVATE_KEY" "secure debug did not capture private key fixture" &&
+    _assert_contains "$MOCK_SECURE_DEBUG_LOG" "TEST_DUMMY_RPST" "secure debug did not capture RPST fixture" &&
+    _assert_contains "$MOCK_SECURE_DEBUG_LOG" "Authorization:" "secure debug did not capture Authorization fixture" &&
+    _assert_contains "$MOCK_SECURE_DEBUG_LOG" 'ST$' "secure debug did not capture ST token marker"
 }
 
 _case_selected() {
