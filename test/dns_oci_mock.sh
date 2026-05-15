@@ -272,7 +272,8 @@ _install_oci_mock_stubs() {
   }
 
   _readini() {
-    _dns_oci_mock_append readini_keys "$1|$2|$3"
+    _mock_ini_section="${3:-DEFAULT}"
+    _dns_oci_mock_append readini_keys "$1|$2|$_mock_ini_section"
 
     case "$2" in
     tenancy)
@@ -722,7 +723,6 @@ le_test_oci_auth_oci_cli_config_file_primary() {
   MOCK_OCI_READINI_REGION="us-phoenix-1"
   MOCK_OCI_READINI_KEY_FILE="$_mock_key_file"
   OCI_CLI_CONFIG_FILE="$_mock_config_file"
-  OCI_CLI_PROFILE="DEFAULT"
   unset OCI_CLI_TENANCY
   unset OCI_CLI_USER
   unset OCI_CLI_REGION

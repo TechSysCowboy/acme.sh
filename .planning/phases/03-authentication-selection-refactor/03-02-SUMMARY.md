@@ -64,7 +64,7 @@ completed: 2026-05-15
 ## Decisions Made
 
 - Kept the production hook unchanged in this plan because the Plan 03-01 selector already satisfied the new persistence tests.
-- Made `OCI_CLI_PROFILE=DEFAULT` explicit in the config-file fixture to preserve the hook's current profile behavior while proving the intended config path.
+- Updated the mock `_readini` helper to mirror the real helper's default `DEFAULT` profile behavior when no profile is supplied.
 
 ## Deviations from Plan
 
@@ -72,7 +72,7 @@ None - plan executed exactly as written.
 
 ## Issues Encountered
 
-The first config-file fixture run did not read the `DEFAULT` profile because the test left `OCI_CLI_PROFILE` empty. The fixture now sets `OCI_CLI_PROFILE=DEFAULT`, matching the current hook behavior and keeping this plan scoped to auth selection persistence.
+The first config-file fixture run did not read the `DEFAULT` profile because the mock `_readini` helper treated an empty third argument differently from the real helper. The mock now defaults empty profile arguments to `DEFAULT`, matching production helper behavior.
 
 ## User Setup Required
 
