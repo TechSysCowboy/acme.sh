@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: OCI DNS Subzones and Resource Principal Auth
 current_phase: 4
 current_phase_name: Resource Principal Signing
-current_plan: 04-01
+current_plan: 04-02
 status: Ready to execute
-stopped_at: Phase 4 plans created
-last_updated: "2026-05-15T05:35:00.000Z"
+stopped_at: Completed 04-01-PLAN.md; ready for 04-02
+last_updated: "2026-05-15T05:37:11.000Z"
 last_activity: 2026-05-15
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 13
-  completed_plans: 9
-  percent: 60
+  completed_plans: 10
+  percent: 77
 ---
 
 # Project State
@@ -29,16 +29,16 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 ## Current Position
 
 Phase: 4 (Resource Principal Signing) - READY TO EXECUTE
-Plan: 04-01
+Plan: 04-02
 Current Phase: 4
 Current Phase Name: Resource Principal Signing
 Total Phases: 5
-Current Plan: 04-01
+Current Plan: 04-02
 Total Plans in Phase: 4
 Status: Ready to execute
 Last activity: 2026-05-15
-Last Activity Description: Phase 4 planning artifacts created; ready for execution
-Progress: [██████░░░░] 60%
+Last Activity Description: 04-01 completed; ready for resource-principal Authorization construction
+Progress: [████████░░] 77%
 
 ## Performance Metrics
 
@@ -67,7 +67,7 @@ Progress: [██████░░░░] 60%
 | Phase 03 P01 | 7 min | 3 tasks | 2 files |
 | Phase 03 P02 | 3 min | 3 tasks | 1 files |
 | Phase 03 P03 | 2 min | 3 tasks | 1 files |
-| Phase 04 P01 | planned | 3 tasks | 2 files |
+| Phase 04 P01 | 6min | 3 tasks | 2 files |
 | Phase 04 P02 | planned | 3 tasks | 2 files |
 | Phase 04 P03 | planned | 3 tasks | 2 files |
 | Phase 04 P04 | planned | 3 tasks | 2 files |
@@ -92,6 +92,7 @@ Recent decisions affecting current work:
 - [Phase 02]: Fallback debug assertions use hook-controlled candidate, status, and selection facts, not full OCI-owned error prose.
 - [Phase 02]: No formatter was installed during Phase 2; local shfmt absence is recorded and the repo workflow still pins shfmt v3.1.2.
 - [Phase 04]: Latest Oracle docs were checked before planning. Java SDK latest lists RP v3.0, but Phase 4 intentionally remains scoped to v2.2 per the locked context and OCI Functions/Terraform v2.2 surfaces.
+- [Phase 04-01]: Resource-principal auth selection remains detection-only; token/key material loading is reserved for the future signing path. This avoids caching stale path-backed RPST/private PEM contents during auth selection and preserves API-key precedence.
 
 ### Pending Todos
 
@@ -111,6 +112,6 @@ Items acknowledged and carried forward from milestone setup.
 
 ## Session
 
-Last Date: 2026-05-15T05:35:00.000Z
-Stopped At: Phase 4 plans created
-Resume File: .planning/phases/04-resource-principal-signing/04-01-PLAN.md
+Last Date: 2026-05-15T05:37:11.000Z
+Stopped At: Completed 04-01-PLAN.md; ready for 04-02
+Resume File: .planning/phases/04-resource-principal-signing/04-02-PLAN.md

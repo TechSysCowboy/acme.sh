@@ -89,10 +89,10 @@ Plans:
   2. OCI DNS GET and PATCH requests can be signed with resource principal session-token credentials.
   3. Resource principal token, private key, and Authorization header values are never written to account/domain config.
   4. Sensitive signing values use `_secure_debug*` only.
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 
 Plans:
-- [ ] 04-01: Add resource principal environment detection and token/key loading.
+- [x] 04-01: Add resource principal environment detection and token/key loading.
 - [ ] 04-02: Add resource principal Authorization header construction for OCI DNS requests.
 - [ ] 04-03: Keep ephemeral material process-local and out of account/domain config.
 - [ ] 04-04: Add mocked resource-principal signing and secure-logging tests.
@@ -123,5 +123,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 1. OCI Hook Characterization and Test Harness | 3/3 | Complete | 2026-05-14 |
 | 2. Delegated Zone Discovery and TXT Payloads | 3/3 | Complete    | 2026-05-14 |
 | 3. Authentication Selection Refactor | 3/3 | Complete | 2026-05-15 |
-| 4. Resource Principal Signing | 0/4 | Not started | - |
+| 4. Resource Principal Signing | 1/4 | In Progress | - |
 | 5. Documentation and Release Verification | 0/3 | Not started | - |
