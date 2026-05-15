@@ -780,6 +780,24 @@ le_test_oci_auth_missing_reports_both_paths() {
     _assert_not_contains "$MOCK_CLEARED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "missing-all auth must not clear RP values"
 }
 
+le_test_oci_rm_uses_auth_selector() {
+  _reset_oci_mocks
+  MOCK_OCI_ZONES="example.com"
+
+  _assert_success "remove path should use API-key auth selector" \
+    dns_oci_rm "_acme-challenge.www.example.com" "remove-selector-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _remove_request=$(printf "%s\n" "$MOCK_SIGNED_REQUESTS" | grep '"operation":"REMOVE"')
+  _assert_eq "api_key" "$_oci_auth_mode" "remove path should select api_key mode" &&
+    _assert_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/example.com/records|" "remove selector path did not reach PATCH" &&
+    _assert_contains "$MOCK_SIGNED_REQUESTS" '"operation":"REMOVE"' "remove selector payload missing REMOVE operation" &&
+    _assert_not_contains "$_remove_request" '"ttl":' "remove selector payload must not include TTL" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_RESOURCE_PRINCIPAL" "remove selector must not save RP values" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG" "OCI_RESOURCE_PRINCIPAL" "remove selector must not normal-log RP values" &&
+    _assert_not_contains "$MOCK_INFO_LOG" "OCI_RESOURCE_PRINCIPAL" "remove selector must not info-log RP values"
+}
+
 le_test_oci_secure_debug_boundaries() {
   _reset_oci_mocks
   _dummy_auth_header="Authorization: Signature ST\$TEST_DUMMY_RPST"
