@@ -1,10 +1,11 @@
 ---
 phase: 02
 slug: delegated-zone-discovery-and-txt-payloads
-status: draft
+status: complete
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-05-15
+completed: 2026-05-15
 ---
 
 # Phase 02 - Validation Strategy
@@ -32,10 +33,10 @@ Per-phase validation contract for feedback sampling during execution.
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 02-01-01 | 02-01 | 1 | ZONE-01, ZONE-02, ZONE-03 | T-02-01 | No live OCI calls; no PATCH on no-zone/authz failure | shell unit | `CASE=le_test_oci_lookup_ambiguous_404_falls_back,le_test_oci_lookup_visible_authz_fails_hard sh test/dns_oci_mock.sh` | yes | pending |
-| 02-02-01 | 02-02 | 2 | TXT-01, TXT-02, TXT-03 | T-02-02 | Add/remove use same selected zone and owner | shell unit | `CASE=le_test_oci_add_remove_symmetry,le_test_oci_apex_wildcard_add,le_test_oci_delegated_wildcard_add sh test/dns_oci_mock.sh` | yes | pending |
-| 02-02-02 | 02-02 | 2 | TXT-01, TXT-02 | T-02-03 | JSON payload remains valid for realistic TXT/domain data | shell unit | `CASE=le_test_oci_txt_value_json_escape,le_test_oci_record_domain_json_escape sh test/dns_oci_mock.sh` | yes | pending |
-| 02-03-01 | 02-03 | 3 | ZONE-01, ZONE-02, ZONE-03, TXT-01, TXT-02, TXT-03 | T-02-04 | Full mocked suite remains deterministic and credential-free | shell unit | `sh test/dns_oci_mock.sh` | yes | pending |
+| 02-01-01 | 02-01 | 1 | ZONE-01, ZONE-02, ZONE-03 | T-02-01 | No live OCI calls; no PATCH on no-zone/authz failure | shell unit | `CASE=le_test_oci_lookup_ambiguous_404_falls_back,le_test_oci_lookup_visible_authz_fails_hard sh test/dns_oci_mock.sh` | yes | pass |
+| 02-02-01 | 02-02 | 2 | TXT-01, TXT-02, TXT-03 | T-02-02 | Add/remove use same selected zone and owner | shell unit | `CASE=le_test_oci_add_remove_symmetry,le_test_oci_apex_wildcard_add,le_test_oci_delegated_wildcard_add sh test/dns_oci_mock.sh` | yes | pass |
+| 02-02-02 | 02-02 | 2 | TXT-01, TXT-02 | T-02-03 | JSON payload remains valid for realistic TXT/domain data | shell unit | `CASE=le_test_oci_txt_value_json_escape,le_test_oci_record_domain_json_escape sh test/dns_oci_mock.sh` | yes | pass |
+| 02-03-01 | 02-03 | 3 | ZONE-01, ZONE-02, ZONE-03, TXT-01, TXT-02, TXT-03 | T-02-04 | Full mocked suite remains deterministic and credential-free | shell unit | `sh test/dns_oci_mock.sh` | yes | pass |
 
 ## Wave 0 Requirements
 
@@ -53,11 +54,11 @@ Existing infrastructure covers all Phase 2 requirements:
 
 ## Validation Sign-Off
 
-- [ ] All tasks have automated verify commands.
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify.
-- [ ] Wave 0 covers all missing references.
-- [ ] No watch-mode flags.
-- [ ] Feedback latency under 10 seconds.
-- [ ] `nyquist_compliant: true` remains set in frontmatter.
+- [x] All tasks have automated verify commands.
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify.
+- [x] Wave 0 covers all missing references.
+- [x] No watch-mode flags.
+- [x] Feedback latency under 10 seconds.
+- [x] `nyquist_compliant: true` remains set in frontmatter.
 
-**Approval:** pending
+**Approval:** complete from `02-VERIFICATION.md` and audit rerun evidence.

@@ -1,10 +1,11 @@
 ---
 phase: 03
 slug: authentication-selection-refactor
-status: draft
+status: complete
 nyquist_compliant: true
 wave_0_complete: true
 created: 2026-05-15
+completed: 2026-05-15
 ---
 
 # Phase 03 - Validation Strategy
@@ -38,12 +39,12 @@ created: 2026-05-15
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 03-01-01 | 03-01 | 1 | AUTH-01, AUTH-02 | T-03-01 / T-03-02 | selector does not leak secrets | shell | `CASE=le_test_oci_auth_api_key,le_test_oci_auth_resource_principal_detected_boundary sh test/dns_oci_mock.sh` | yes | pending |
-| 03-01-02 | 03-01 | 1 | AUTH-01, AUTH-02, AUTH-03 | T-03-01 / T-03-03 | RP boundary fails before signing/PATCH | shell | `CASE=le_test_oci_auth_resource_principal_detected_boundary,le_test_oci_auth_partial_key_falls_back_to_resource_principal sh test/dns_oci_mock.sh` | yes | pending |
-| 03-02-01 | 03-02 | 2 | AUTH-01, AUTH-02 | T-03-04 / T-03-05 | no RP persistence | shell | `CASE=le_test_oci_auth_api_key_wins_over_resource_principal,le_test_oci_auth_resource_principal_does_not_persist sh test/dns_oci_mock.sh` | yes | pending |
-| 03-02-02 | 03-02 | 2 | AUTH-01, AUTH-03 | T-03-04 | existing OCI CLI config/env persistence preserved | shell | `CASE=le_test_oci_auth_api_key,le_test_oci_auth_oci_cli_config_file_primary,le_test_oci_auth_missing_reports_both_paths sh test/dns_oci_mock.sh` | yes | pending |
-| 03-03-01 | 03-03 | 3 | AUTH-01, AUTH-02, AUTH-03 | T-03-06 / T-03-07 | full public-path matrix is credential-free | shell | `sh test/dns_oci_mock.sh` | yes | pending |
-| 03-03-02 | 03-03 | 3 | AUTH-01, AUTH-02, AUTH-03 | T-03-07 | static gates and formatting clean | static | `shellcheck -e SC2181 -e SC2089 test/dns_oci_mock.sh dnsapi/dns_oci.sh` | yes | pending |
+| 03-01-01 | 03-01 | 1 | AUTH-01, AUTH-02 | T-03-01 / T-03-02 | selector does not leak secrets | shell | `CASE=le_test_oci_auth_api_key,le_test_oci_auth_resource_principal_detected_boundary sh test/dns_oci_mock.sh` | yes | pass |
+| 03-01-02 | 03-01 | 1 | AUTH-01, AUTH-02, AUTH-03 | T-03-01 / T-03-03 | RP boundary fails before signing/PATCH | shell | `CASE=le_test_oci_auth_resource_principal_detected_boundary,le_test_oci_auth_partial_key_falls_back_to_resource_principal sh test/dns_oci_mock.sh` | yes | pass |
+| 03-02-01 | 03-02 | 2 | AUTH-01, AUTH-02 | T-03-04 / T-03-05 | no RP persistence | shell | `CASE=le_test_oci_auth_api_key_wins_over_resource_principal,le_test_oci_auth_resource_principal_does_not_persist sh test/dns_oci_mock.sh` | yes | pass |
+| 03-02-02 | 03-02 | 2 | AUTH-01, AUTH-03 | T-03-04 | existing OCI CLI config/env persistence preserved | shell | `CASE=le_test_oci_auth_api_key,le_test_oci_auth_oci_cli_config_file_primary,le_test_oci_auth_missing_reports_both_paths sh test/dns_oci_mock.sh` | yes | pass |
+| 03-03-01 | 03-03 | 3 | AUTH-01, AUTH-02, AUTH-03 | T-03-06 / T-03-07 | full public-path matrix is credential-free | shell | `sh test/dns_oci_mock.sh` | yes | pass |
+| 03-03-02 | 03-03 | 3 | AUTH-01, AUTH-02, AUTH-03 | T-03-07 | static gates and formatting clean | static | `shellcheck -e SC2181 -e SC2089 test/dns_oci_mock.sh dnsapi/dns_oci.sh` | yes | pass |
 
 ---
 
@@ -69,4 +70,4 @@ resource-principal smoke checks remain deferred out of v1 Phase 3 scope.
 - [x] Feedback latency < 10s
 - [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending execution
+**Approval:** complete from `03-VERIFICATION.md` and audit rerun evidence.
