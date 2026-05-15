@@ -5,16 +5,16 @@ milestone_name: OCI DNS Subzones and Resource Principal Auth
 current_phase: 4
 current_phase_name: Resource Principal Signing
 current_plan: 04-04
-status: Ready to execute
-stopped_at: Completed 04-03-PLAN.md; ready for 04-04
-last_updated: "2026-05-15T05:51:54.000Z"
+status: verifying
+stopped_at: Completed 04-04-PLAN.md; Phase 4 ready for verification
+last_updated: "2026-05-15T05:58:31.000Z"
 last_activity: 2026-05-15
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 13
-  completed_plans: 12
-  percent: 92
+  completed_plans: 13
+  percent: 80
 ---
 
 # Project State
@@ -35,10 +35,10 @@ Current Phase Name: Resource Principal Signing
 Total Phases: 5
 Current Plan: 04-04
 Total Plans in Phase: 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-15
-Last Activity Description: 04-03 completed; ready for passphrase and full signing matrix coverage
-Progress: [█████████░] 92%
+Last Activity Description: 04-04 completed; Phase 4 resource-principal signing ready for verification
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
@@ -70,7 +70,7 @@ Progress: [█████████░] 92%
 | Phase 04 P01 | 6min | 3 tasks | 2 files |
 | Phase 04 P02 | 7min | 3 tasks | 2 files |
 | Phase 04 P03 | 5min | 3 tasks | 2 files |
-| Phase 04 P04 | planned | 3 tasks | 2 files |
+| Phase 04 P04 | 6min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -95,6 +95,7 @@ Recent decisions affecting current work:
 - [Phase 04-01]: Resource-principal auth selection remains detection-only; token/key material loading is reserved for the future signing path. This avoids caching stale path-backed RPST/private PEM contents during auth selection and preserves API-key precedence.
 - [Phase 04-02]: `_signed_request` now dispatches to API-key or resource-principal helpers. Resource-principal GET/PATCH signing uses `keyId="ST$<rpst>"` and the same OCI body-header order as the existing API-key signer.
 - [Phase 04-03]: Resource-principal public add refreshes path-backed RPST/private PEM per request, keeps RP data out of account config and normal logs, and treats RP signing failures during zone lookup as terminal auth failures.
+- [Phase 04-04]: Passphrase-backed resource-principal signing uses a temp passphrase file with OpenSSL `-passin file:`; no-passphrase signing continues through `_sign`, and Phase 4 full mock/ShellCheck/shfmt gates passed.
 
 ### Pending Todos
 
@@ -114,6 +115,6 @@ Items acknowledged and carried forward from milestone setup.
 
 ## Session
 
-Last Date: 2026-05-15T05:51:54.000Z
-Stopped At: Completed 04-03-PLAN.md; ready for 04-04
-Resume File: .planning/phases/04-resource-principal-signing/04-04-PLAN.md
+Last Date: 2026-05-15T05:58:31.000Z
+Stopped At: Completed 04-04-PLAN.md; Phase 4 ready for verification
+Resume File: None
