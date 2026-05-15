@@ -27,7 +27,7 @@
 
 - [x] **RP-01**: Resource principal signing reads session token, private key, region, and version data from OCI resource-principal environment variables or their referenced files.
 - [x] **RP-02**: Resource principal request signing uses the OCI session token and ephemeral private key for OCI DNS API requests without requiring tenancy/user/fingerprint API-key credentials.
-- [ ] **RP-03**: Ephemeral resource principal session tokens, private keys, and authorization headers are never saved to acme.sh account/domain config.
+- [x] **RP-03**: Ephemeral resource principal session tokens, private keys, and authorization headers are never saved to acme.sh account/domain config.
 - [ ] **RP-04**: Resource principal secrets and derived authorization material are logged only through secure debug helpers.
 
 ### Documentation and Verification
@@ -79,7 +79,7 @@ Deferred to future release. Tracked but not in the current roadmap.
 | AUTH-03 | Phase 3 | Complete |
 | RP-01 | Phase 4 | Complete |
 | RP-02 | Phase 4 | Complete |
-| RP-03 | Phase 4 | Pending |
+| RP-03 | Phase 4 | Complete |
 | RP-04 | Phase 4 | Pending |
 | DOC-01 | Phase 5 | Pending |
 | DOC-02 | Phase 5 | Pending |
