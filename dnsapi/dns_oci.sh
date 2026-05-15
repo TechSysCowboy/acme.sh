@@ -81,18 +81,23 @@ dns_oci_rm() {
 
 ####################  Private functions below ##################################
 _oci_auth_mode=""
+_oci_resource_principal_auth_error=""
 _oci_rp_rpst=""
 _oci_rp_private_pem=""
 _oci_rp_private_pem_passphrase=""
 _oci_rp_region=""
 
 _get_oci_zone() {
+  _oci_resource_principal_auth_error=""
 
   if ! _oci_select_auth; then
     return 1
   fi
 
   if ! _get_zone "$_fqdn"; then
+    if [ "$_oci_resource_principal_auth_error" ]; then
+      return 1
+    fi
     if [ "$_oci_zone_lookup_authz_error" ]; then
       return 1
     fi
@@ -337,6 +342,12 @@ _get_zone() {
     fi
 
     _oci_zone_response=$(_signed_request "GET" "/20180115/zones/$h")
+    _oci_signed_status="$?"
+    if [ "$_oci_signed_status" != "0" ] && [ "$_oci_auth_mode" = "resource_principal" ]; then
+      _oci_resource_principal_auth_error=1
+      return 1
+    fi
+
     _domain_id=$(_oci_json_string "id" "$_oci_zone_response")
     if [ "$_domain_id" ]; then
       _sub_domain=$(printf "%s" "$domain" | cut -d . -f 1-"$p")
@@ -523,6 +534,7 @@ _signed_request_resource_principal() {
   _return_field="$4"
 
   if ! _oci_load_resource_principal_material; then
+    _oci_resource_principal_auth_error=1
     return 1
   fi
 
@@ -556,6 +568,13 @@ _signed_request_resource_principal() {
     printf '%s' "$_oci_rp_private_pem" >"$_tmp_file"
     _signature=$(printf '%b' "$_string_to_sign" | _sign "$_tmp_file" sha256 | tr -d '\r\n')
     rm -f "$_tmp_file"
+  fi
+
+  if [ -z "$_signature" ]; then
+    _oci_resource_principal_auth_error=1
+    _err "Error: OCI resource principal signing failed."
+    _oci_reset_resource_principal_material
+    return 1
   fi
 
   _signed_header="Authorization: Signature version=\"$_sig_version\",keyId=\"$_sig_keyId\",algorithm=\"$_sig_alg\",headers=\"$_sig_headers\",signature=\"$_signature\""
