@@ -28,7 +28,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Delegated Zone Discovery and TXT Payloads** - Implement and prove longest-match zone discovery plus relative TXT payloads. (completed 2026-05-14)
 - [x] **Phase 3: Authentication Selection Refactor** - Preserve current OCI API-key auth while creating a clean fallback point for resource principal auth. (completed 2026-05-15)
 - [x] **Phase 4: Resource Principal Signing** - Add secure resource-principal signing for OCI DNS API requests. (completed 2026-05-15)
-- [ ] **Phase 5: Documentation and Release Verification** - Document behavior, run static checks, and capture final mocked proof.
+- [x] **Phase 5: Documentation and Release Verification** - Document behavior, run static checks, and capture final mocked proof. (completed 2026-05-15)
 
 ## Phase Details
 
@@ -106,7 +106,7 @@ Plans:
   2. User-facing docs describe setup for existing key-based users and OCI-hosted resource-principal workloads.
   3. ShellCheck and shfmt pass for changed hook/test/doc-support shell files.
   4. The mocked OCI hook suite passes and the verification record names any live OCI checks intentionally deferred.
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 
@@ -120,7 +120,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 05-03: Run final release verification and capture v2 live-validation checklist.
+- [x] 05-03: Run final release verification and capture v2 live-validation checklist.
 
 ## Progress
 
@@ -133,4 +133,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 2. Delegated Zone Discovery and TXT Payloads | 3/3 | Complete    | 2026-05-14 |
 | 3. Authentication Selection Refactor | 3/3 | Complete | 2026-05-15 |
 | 4. Resource Principal Signing | 4/4 | Complete   | 2026-05-15 |
-| 5. Documentation and Release Verification | 2/3 | In Progress | - |
+| 5. Documentation and Release Verification | 3/3 | Complete   | 2026-05-15 |

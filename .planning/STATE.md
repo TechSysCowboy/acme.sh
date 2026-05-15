@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: OCI DNS Subzones and Resource Principal Auth
 current_phase: 5
 current_phase_name: Documentation and Release Verification
-current_plan: 05-03
-status: executing
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-05-15T07:10:53.086Z"
-last_activity: 2026-05-15 -- Completed 05-02 wiki guide
+current_plan: Complete
+status: complete
+stopped_at: Completed 05-03-PLAN.md
+last_updated: "2026-05-15T07:15:21.112Z"
+last_activity: 2026-05-15 -- Phase 05 complete
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 16
-  completed_plans: 15
-  percent: 94
+  completed_plans: 16
+  percent: 100
 ---
 
 # Project State
@@ -24,27 +24,27 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-15)
 
 **Core value:** OCI DNS validation must choose the right zone and authenticate safely without breaking existing key-based OCI users.
-**Current focus:** Phase 5 — documentation and release verification
+**Current focus:** v1 milestone complete — ready for milestone closeout
 
 ## Current Position
 
-Phase: 5 (Documentation and Release Verification) - IN PROGRESS
-Plan: 05-03
+Phase: 5 (Documentation and Release Verification) - COMPLETE
+Plan: Complete
 Current Phase: 5
 Current Phase Name: Documentation and Release Verification
 Total Phases: 5
-Current Plan: 05-03
+Current Plan: Complete
 Total Plans in Phase: 3
-Status: Executing
-Last activity: 2026-05-15 -- Completed 05-02 wiki guide
-Last Activity Description: 05-02 wiki-ready guide complete; 05-03 final release verification next
-Progress: [█████████░] 94%
+Status: Complete
+Last activity: 2026-05-15 -- Phase 05 complete
+Last Activity Description: Phase 05 documentation, release verification, and v2 live-validation checklist complete
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 15
+- Total plans completed: 16
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -56,12 +56,12 @@ Progress: [█████████░] 94%
 | 02 | 3 | - | - |
 | 03 | 3 | - | - |
 | 04 | 4 | - | - |
-| 05 | 2 | 12min | 6min |
+| 05 | 3 | 16min | 5min |
 
 **Recent Trend:**
 
-- Last 5 plans: 04-02, 04-03, 04-04, 05-01, 05-02
-- Trend: Phase 5 in progress
+- Last 5 plans: 04-03, 04-04, 05-01, 05-02, 05-03
+- Trend: v1 milestone complete
 
 | Phase 02 P01 | 45min | 3 tasks | 3 files |
 | Phase 02 P02 | 20min | 3 tasks | 3 files |
@@ -75,6 +75,7 @@ Progress: [█████████░] 94%
 | Phase 04 P04 | 6min | 3 tasks | 2 files |
 | Phase 05 P01 | 8min | 3 tasks | 3 files |
 | Phase 05 P02 | 4min | 3 tasks | 2 files |
+| Phase 05 P03 | 4min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -102,6 +103,7 @@ Recent decisions affecting current work:
 - [Phase 04-04]: Passphrase-backed resource-principal signing uses a temp passphrase file with OpenSSL `-passin file:`; no-passphrase signing continues through `_sign`, and Phase 4 full mock/ShellCheck/shfmt gates passed.
 - [Phase 05-01]: Provider metadata now documents API-key primary auth, resource-principal fallback, delegated subzones, policy expectations, and RP v2.2 env names. Stale passphrase and RP signing prose is guarded by the mock harness.
 - [Phase 05-02]: Wiki-ready OCI DNS guidance now covers delegated subzones, API-key setup, resource-principal fallback, policy examples, secret handling, troubleshooting, and explicit v1 live-validation deferral.
+- [Phase 05-03]: Final verification passed with 38 mocked OCI cases, focused metadata coverage, stale-prose scan, ShellCheck, shfmt, docs checks, freshness audit, and 21/21 decision coverage. Live OCI validation remains deferred to `05-V2-LIVE-VALIDATION.md`.
 
 ### Pending Todos
 
@@ -121,6 +123,6 @@ Items acknowledged and carried forward from milestone setup.
 
 ## Session
 
-Last Date: 2026-05-15T07:10:52.617Z
-Stopped At: Completed 05-02-PLAN.md
+Last Date: 2026-05-15T07:15:20.870Z
+Stopped At: Completed 05-03-PLAN.md
 Resume File: None
