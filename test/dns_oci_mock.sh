@@ -760,10 +760,13 @@ le_test_oci_rp_signs_get_with_st_key_id() {
   OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM="TEST_INLINE_PRIVATE_PEM"
   OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
 
-  _assert_success "resource-principal GET should sign with ST keyId" \
-    _signed_request "GET" "/20180115/zones/example.com" "" || return 1
+  if ! _signed_request "GET" "/20180115/zones/example.com" "" >"$_DNS_OCI_MOCK_DIR/response"; then
+    _fail "resource-principal GET should sign with ST keyId"
+    return 1
+  fi
 
   _dns_oci_mock_refresh_captures
+  _actual="$(_dns_oci_mock_read response)"
   _mock_signing_string="$(_dns_oci_mock_read signing_string)"
   _mock_signing_key="$(_dns_oci_mock_read signing_key)"
   _install_oci_mock_stubs
@@ -776,10 +779,14 @@ le_test_oci_rp_signs_get_with_st_key_id() {
     _assert_contains "$_H2" 'algorithm="rsa-sha256"' "GET Authorization algorithm missing" &&
     _assert_contains "$_H2" 'headers="(request-target) date host"' "GET signed header list changed" &&
     _assert_contains "$_H2" 'signature="TEST_SIGNATURE"' "GET signature missing" &&
+    _assert_eq "{}" "$_actual" "GET response body changed" &&
     _assert_contains "$_mock_signing_string" "(request-target): get /20180115/zones/example.com" "GET signing string missing request target" &&
     _assert_contains "$_mock_signing_string" "date:" "GET signing string missing date" &&
     _assert_contains "$_mock_signing_string" "host: dns.us-ashburn-1.oraclecloud.com" "GET signing string missing RP host" &&
     _assert_eq "TEST_INLINE_PRIVATE_PEM" "$_mock_signing_key" "GET signer did not write RP private PEM to temp key" &&
+    _assert_success "GET signer should remove temp key file" test ! -e "$_DNS_OCI_MOCK_DIR/rp-signing-key" &&
+    _assert_eq "" "$_oci_rp_rpst" "GET signer should reset loaded RPST" &&
+    _assert_eq "" "$_oci_rp_private_pem" "GET signer should reset loaded private PEM" &&
     _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "TEST_INLINE_RPST" "normal logs leaked RPST" &&
     _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "TEST_INLINE_PRIVATE_PEM" "normal logs leaked private PEM" &&
     _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" 'ST$TEST_INLINE_RPST' "normal logs leaked ST keyId" &&

@@ -436,16 +436,19 @@ _fingerprint() {
 }
 
 _signed_request() {
+  if [ "$_oci_auth_mode" = "resource_principal" ]; then
+    _signed_request_resource_principal "$@"
+    return $?
+  fi
 
+  _signed_request_api_key "$@"
+}
+
+_signed_request_api_key() {
   _sig_method="$1"
   _sig_target="$2"
   _sig_body="$3"
   _return_field="$4"
-
-  if [ "$_oci_auth_mode" = "resource_principal" ]; then
-    _err "Error: _oci_auth_mode=resource_principal; resource principal signing is not implemented yet."
-    return 1
-  fi
 
   _key_fingerprint=$(_fingerprint "$OCI_CLI_KEY")
   _sig_host="dns.$OCI_CLI_REGION.oraclecloud.com"
@@ -510,6 +513,70 @@ _signed_request() {
   printf "%s" "$_return"
   return $_ret
 
+}
+
+_signed_request_resource_principal() {
+  _sig_method="$1"
+  _sig_target="$2"
+  _sig_body="$3"
+  _return_field="$4"
+
+  if ! _oci_load_resource_principal_material; then
+    return 1
+  fi
+
+  if [ "$_sig_body" ]; then
+    _err "Error: OCI resource principal PATCH signing is not implemented yet."
+    _oci_reset_resource_principal_material
+    return 1
+  fi
+
+  _sig_host="dns.$_oci_rp_region.oraclecloud.com"
+  _sig_keyId="ST\$$_oci_rp_rpst"
+  _sig_alg="rsa-sha256"
+  _sig_version="1"
+  _sig_now="$(LC_ALL=C \date -u "+%a, %d %h %Y %H:%M:%S GMT")"
+
+  _request_method=$(printf %s "$_sig_method" | _lower_case)
+  _curl_method=$(printf %s "$_sig_method" | _upper_case)
+
+  _request_target="(request-target): $_request_method $_sig_target"
+  _date_header="date: $_sig_now"
+  _host_header="host: $_sig_host"
+
+  _string_to_sign="$_request_target\n$_date_header\n$_host_header"
+  _sig_headers="(request-target) date host"
+
+  _tmp_file=$(_mktemp)
+  if [ -f "$_tmp_file" ]; then
+    printf '%s' "$_oci_rp_private_pem" >"$_tmp_file"
+    _signature=$(printf '%b' "$_string_to_sign" | _sign "$_tmp_file" sha256 | tr -d '\r\n')
+    rm -f "$_tmp_file"
+  fi
+
+  _signed_header="Authorization: Signature version=\"$_sig_version\",keyId=\"$_sig_keyId\",algorithm=\"$_sig_alg\",headers=\"$_sig_headers\",signature=\"$_signature\""
+  _secure_debug3 _string_to_sign "$_string_to_sign"
+  _secure_debug3 _signed_header "$_signed_header"
+
+  if [ "$_curl_method" = "GET" ]; then
+    export _H1="$_date_header"
+    export _H2="$_signed_header"
+    _response="$(_get "https://${_sig_host}${_sig_target}")"
+  else
+    _err "Unable to process method: $_curl_method."
+  fi
+
+  _ret="$?"
+  if [ "$_return_field" ]; then
+    _response="$(echo "$_response" | sed 's/\\\"//g')"
+    _return=$(echo "${_response}" | _egrep_o "\"$_return_field\"\\s*:\\s*\"[^\"]*\"" | _head_n 1 | cut -d : -f 2 | tr -d "\"")
+  else
+    _return="$_response"
+  fi
+
+  _oci_reset_resource_principal_material
+  printf "%s" "$_return"
+  return $_ret
 }
 
 # file  key  [section]
