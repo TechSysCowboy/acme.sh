@@ -1,7 +1,10 @@
 #!/usr/bin/env sh
 # shellcheck disable=SC2034
 dns_oci_info='Oracle Cloud Infrastructure (OCI)
- If OCI CLI configuration file ~/.oci/config has a DEFAULT profile then it will be used.
+ API-key auth from OCI CLI config or OCI_CLI_* values is primary.
+ Resource principal auth is a fallback when API-key auth is incomplete and OCI_RESOURCE_PRINCIPAL_VERSION=2.2 values are complete.
+ delegated subzones are supported by selecting the most-specific accessible zone and falling back to parent zones on ambiguous lookup misses.
+ DNS policy must allow zone read and TXT record mutation, for example read dns-zones and use dns-records.
 Site: Cloud.Oracle.com
 Docs: github.com/acmesh-official/acme.sh/wiki/How-to-use-Oracle-Cloud-Infrastructure-DNS
 Options:
@@ -10,6 +13,11 @@ Options:
  OCI_CLI_REGION Should point to the tenancy home region. Optional.
  OCI_CLI_KEY_FILE Path to private API signing key file in PEM format. Optional.
  OCI_CLI_KEY The private API signing key in PEM format. Optional.
+ OCI_RESOURCE_PRINCIPAL_VERSION Must be 2.2 for resource principal fallback. Optional.
+ OCI_RESOURCE_PRINCIPAL_RPST Path to RPST file or inline RPST value. Optional.
+ OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM Path to private PEM file or inline PEM value. Optional.
+ OCI_RESOURCE_PRINCIPAL_REGION Region for resource principal DNS requests. Optional.
+ OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM_PASSPHRASE Path to passphrase file or inline passphrase value. Optional.
 Issues: github.com/acmesh-official/acme.sh/issues/3540
 Author: Avi Miller <me@dje.li>
 '
@@ -28,7 +36,8 @@ Author: Avi Miller <me@dje.li>
 # - OCI_CLI_KEY_FILE: Path to private API signing key file in PEM format; or
 # - OCI_CLI_KEY     : The private API signing key in PEM format
 #
-# NOTE: using an encrypted private key that needs a passphrase is not supported.
+# Resource principal fallback supports OCI_RESOURCE_PRINCIPAL_VERSION=2.2 with
+# RPST, private PEM, region, and optional private PEM passphrase values.
 #
 
 dns_oci_add() {

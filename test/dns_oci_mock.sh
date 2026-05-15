@@ -199,7 +199,7 @@ _install_oci_mock_stubs() {
     _mock_return_field="$4"
 
     if [ "$_oci_auth_mode" = "resource_principal" ]; then
-      _err "Error: _oci_auth_mode=resource_principal; resource principal signing is not implemented yet."
+      _err "Error: _oci_auth_mode=resource_principal; resource principal signing failed."
       return 1
     fi
 
@@ -582,6 +582,30 @@ le_test_oci_signed_request_return_field() {
   _install_oci_mock_stubs
 
   _assert_eq "ocid1.dns-zone.oc1..example" "$_actual" "return-field parser should not append stray characters"
+}
+
+le_test_oci_provider_metadata_documents_current_behavior() {
+  _reset_oci_mocks
+
+  _assert_contains "$dns_oci_info" "API-key" "metadata must document API-key auth" &&
+    _assert_contains "$dns_oci_info" "resource principal" "metadata must document resource principal auth" &&
+    _assert_contains "$dns_oci_info" "fallback" "metadata must document resource principal fallback" &&
+    _assert_contains "$dns_oci_info" "delegated" "metadata must document delegated zone behavior" &&
+    _assert_contains "$dns_oci_info" "subzone" "metadata must document subzone behavior" &&
+    _assert_contains "$dns_oci_info" "OCI_RESOURCE_PRINCIPAL_VERSION" "metadata must list RP version env" &&
+    _assert_contains "$dns_oci_info" "OCI_RESOURCE_PRINCIPAL_RPST" "metadata must list RPST env" &&
+    _assert_contains "$dns_oci_info" "OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM" "metadata must list private PEM env" &&
+    _assert_contains "$dns_oci_info" "OCI_RESOURCE_PRINCIPAL_REGION" "metadata must list RP region env" &&
+    _assert_contains "$dns_oci_info" "OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM_PASSPHRASE" "metadata must list optional passphrase env" || return 1
+
+  _hook_text=$(cat dnsapi/dns_oci.sh)
+  _test_text=$(cat test/dns_oci_mock.sh)
+  _stale_passphrase_phrase="passphrase is not"
+  _stale_passphrase_phrase="$_stale_passphrase_phrase supported"
+  _stale_signing_phrase="signing is not"
+  _stale_signing_phrase="$_stale_signing_phrase implemented"
+  _assert_not_contains "$_hook_text$_test_text" "$_stale_passphrase_phrase" "stale passphrase unsupported prose remains" &&
+    _assert_not_contains "$_hook_text$_test_text" "$_stale_signing_phrase" "stale resource-principal signing prose remains"
 }
 
 le_test_oci_rp_loads_inline_material() {
@@ -1243,9 +1267,7 @@ le_test_oci_auth_resource_principal_current_state() {
   OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM="/tmp/nonexistent-private.pem"
   OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
 
-  # Phase 3/4 must change this fixture from current-failure characterization
-  # to fallback-success proof when resource principal auth is implemented.
-  _assert_failure "resource-principal-only auth should fail before Phase 3/4 fallback" \
+  _assert_failure "resource-principal-only auth should fail before PATCH when signing fails" \
     dns_oci_add "_acme-challenge.www.example.com" "rp-current-state-value" || return 1
 
   _dns_oci_mock_refresh_captures
@@ -1268,13 +1290,13 @@ le_test_oci_auth_resource_principal_detected_boundary() {
   OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM="/tmp/nonexistent-private.pem"
   OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
 
-  _assert_failure "resource-principal auth should stop at Phase 3 signing boundary" \
+  _assert_failure "resource-principal auth should stop on signing failure" \
     dns_oci_add "_acme-challenge.www.example.com" "rp-boundary-value" || return 1
 
   _dns_oci_mock_refresh_captures
   _assert_contains "$MOCK_ERROR_LOG" "_oci_auth_mode=resource_principal" "resource-principal mode was not recorded" &&
     _assert_contains "$MOCK_ERROR_LOG" "resource principal" "resource-principal diagnostic missing" &&
-    _assert_contains "$MOCK_ERROR_LOG" "signing is not implemented" "resource-principal signing boundary missing" &&
+    _assert_contains "$MOCK_ERROR_LOG" "signing failed" "resource-principal signing failure missing" &&
     _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/" "resource-principal boundary must not PATCH"
 }
 
@@ -1291,14 +1313,14 @@ le_test_oci_auth_partial_key_falls_back_to_resource_principal() {
   OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM="/tmp/nonexistent-private.pem"
   OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
 
-  _assert_failure "partial API-key config should fall back to RP signing boundary" \
+  _assert_failure "partial API-key config should fall back to RP signing failure" \
     dns_oci_add "_acme-challenge.www.example.com" "rp-partial-key-value" || return 1
 
   _dns_oci_mock_refresh_captures
   _assert_contains "$MOCK_ERROR_LOG" "OCI_CLI_USER" "partial-key diagnostic should name missing user" &&
     _assert_contains "$MOCK_ERROR_LOG" "OCI_CLI_KEY" "partial-key diagnostic should name missing key material" &&
     _assert_contains "$MOCK_ERROR_LOG" "_oci_auth_mode=resource_principal" "partial-key fallback did not select RP mode" &&
-    _assert_contains "$MOCK_ERROR_LOG" "signing is not implemented" "partial-key fallback did not reach RP boundary" &&
+    _assert_contains "$MOCK_ERROR_LOG" "signing failed" "partial-key fallback did not report RP signing failure" &&
     _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "resource principal values must not be persisted" &&
     _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/" "partial-key RP boundary must not PATCH"
 }
