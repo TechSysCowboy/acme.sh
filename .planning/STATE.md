@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: OCI DNS Subzones and Resource Principal Auth
 current_phase: 5
 current_phase_name: Documentation and Release Verification
-current_plan: Not started
+current_plan: 05-02
 status: executing
-stopped_at: Phase 5 context gathered
-last_updated: "2026-05-15T06:57:56.871Z"
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-05-15T07:07:46.835Z"
 last_activity: 2026-05-15 -- Phase 05 planning complete
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 16
-  completed_plans: 13
-  percent: 80
+  completed_plans: 14
+  percent: 88
 ---
 
 # Project State
@@ -28,23 +28,23 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 
 ## Current Position
 
-Phase: 5 (Documentation and Release Verification) - READY TO PLAN
-Plan: Not started
+Phase: 5 (Documentation and Release Verification) - IN PROGRESS
+Plan: 05-02
 Current Phase: 5
 Current Phase Name: Documentation and Release Verification
 Total Phases: 5
-Current Plan: Not started
+Current Plan: 05-02
 Total Plans in Phase: 3
-Status: Ready to execute
-Last activity: 2026-05-15 -- Phase 05 planning complete
-Last Activity Description: Phase 05 planning complete — 3 plans ready
-Progress: [████████░░] 80%
+Status: Executing
+Last activity: 2026-05-15 -- Completed 05-01 provider metadata
+Last Activity Description: 05-01 metadata and stale-prose cleanup complete; 05-02 wiki guide next
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 13
+- Total plans completed: 14
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -56,11 +56,12 @@ Progress: [████████░░] 80%
 | 02 | 3 | - | - |
 | 03 | 3 | - | - |
 | 04 | 4 | - | - |
+| 05 | 1 | 8min | 8min |
 
 **Recent Trend:**
 
-- Last 5 plans: -
-- Trend: Not started
+- Last 5 plans: 04-01, 04-02, 04-03, 04-04, 05-01
+- Trend: Phase 5 in progress
 
 | Phase 02 P01 | 45min | 3 tasks | 3 files |
 | Phase 02 P02 | 20min | 3 tasks | 3 files |
@@ -72,6 +73,7 @@ Progress: [████████░░] 80%
 | Phase 04 P02 | 7min | 3 tasks | 2 files |
 | Phase 04 P03 | 5min | 3 tasks | 2 files |
 | Phase 04 P04 | 6min | 3 tasks | 2 files |
+| Phase 05 P01 | 8min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -97,6 +99,7 @@ Recent decisions affecting current work:
 - [Phase 04-02]: `_signed_request` now dispatches to API-key or resource-principal helpers. Resource-principal GET/PATCH signing uses `keyId="ST$<rpst>"` and the same OCI body-header order as the existing API-key signer.
 - [Phase 04-03]: Resource-principal public add refreshes path-backed RPST/private PEM per request, keeps RP data out of account config and normal logs, and treats RP signing failures during zone lookup as terminal auth failures.
 - [Phase 04-04]: Passphrase-backed resource-principal signing uses a temp passphrase file with OpenSSL `-passin file:`; no-passphrase signing continues through `_sign`, and Phase 4 full mock/ShellCheck/shfmt gates passed.
+- [Phase 05-01]: Provider metadata now documents API-key primary auth, resource-principal fallback, delegated subzones, policy expectations, and RP v2.2 env names. Stale passphrase and RP signing prose is guarded by the mock harness.
 
 ### Pending Todos
 
@@ -116,6 +119,6 @@ Items acknowledged and carried forward from milestone setup.
 
 ## Session
 
-Last Date: 2026-05-15T06:28:13.193Z
-Stopped At: Phase 5 context gathered
-Resume File: .planning/phases/05-documentation-and-release-verification/05-CONTEXT.md
+Last Date: 2026-05-15T07:07:46.383Z
+Stopped At: Completed 05-01-PLAN.md
+Resume File: None

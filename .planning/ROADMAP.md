@@ -106,13 +106,13 @@ Plans:
   2. User-facing docs describe setup for existing key-based users and OCI-hosted resource-principal workloads.
   3. ShellCheck and shfmt pass for changed hook/test/doc-support shell files.
   4. The mocked OCI hook suite passes and the verification record names any live OCI checks intentionally deferred.
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 
 **Wave 1**
 
-- [ ] 05-01: Update OCI provider metadata and stale hook/test prose.
+- [x] 05-01: Update OCI provider metadata and stale hook/test prose.
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -133,4 +133,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 2. Delegated Zone Discovery and TXT Payloads | 3/3 | Complete    | 2026-05-14 |
 | 3. Authentication Selection Refactor | 3/3 | Complete | 2026-05-15 |
 | 4. Resource Principal Signing | 4/4 | Complete   | 2026-05-15 |
-| 5. Documentation and Release Verification | 0/3 | Not started | - |
+| 5. Documentation and Release Verification | 1/3 | In Progress | - |
