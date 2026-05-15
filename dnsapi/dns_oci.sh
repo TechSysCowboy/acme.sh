@@ -496,6 +496,7 @@ _signed_request_api_key() {
     export _H2="$_sig_body_sha256"
     export _H3="$_sig_body_type"
     export _H4="$_sig_body_length"
+    # shellcheck disable=SC2090
     export _H5="$_signed_header"
     _response="$(_post "$_sig_body" "https://${_sig_host}${_sig_target}" "" "PATCH")"
   else
@@ -525,12 +526,6 @@ _signed_request_resource_principal() {
     return 1
   fi
 
-  if [ "$_sig_body" ]; then
-    _err "Error: OCI resource principal PATCH signing is not implemented yet."
-    _oci_reset_resource_principal_material
-    return 1
-  fi
-
   _sig_host="dns.$_oci_rp_region.oraclecloud.com"
   _sig_keyId="ST\$$_oci_rp_rpst"
   _sig_alg="rsa-sha256"
@@ -547,6 +542,15 @@ _signed_request_resource_principal() {
   _string_to_sign="$_request_target\n$_date_header\n$_host_header"
   _sig_headers="(request-target) date host"
 
+  if [ "$_sig_body" ]; then
+    _secure_debug3 _sig_body "$_sig_body"
+    _sig_body_sha256="x-content-sha256: $(printf %s "$_sig_body" | _digest sha256)"
+    _sig_body_type="content-type: application/json"
+    _sig_body_length="content-length: ${#_sig_body}"
+    _string_to_sign="$_string_to_sign\n$_sig_body_sha256\n$_sig_body_type\n$_sig_body_length"
+    _sig_headers="$_sig_headers x-content-sha256 content-type content-length"
+  fi
+
   _tmp_file=$(_mktemp)
   if [ -f "$_tmp_file" ]; then
     printf '%s' "$_oci_rp_private_pem" >"$_tmp_file"
@@ -562,6 +566,15 @@ _signed_request_resource_principal() {
     export _H1="$_date_header"
     export _H2="$_signed_header"
     _response="$(_get "https://${_sig_host}${_sig_target}")"
+  elif [ "$_curl_method" = "PATCH" ]; then
+    export _H1="$_date_header"
+    # shellcheck disable=SC2090
+    export _H2="$_sig_body_sha256"
+    export _H3="$_sig_body_type"
+    export _H4="$_sig_body_length"
+    # shellcheck disable=SC2090
+    export _H5="$_signed_header"
+    _response="$(_post "$_sig_body" "https://${_sig_host}${_sig_target}" "" "PATCH")"
   else
     _err "Unable to process method: $_curl_method."
   fi
