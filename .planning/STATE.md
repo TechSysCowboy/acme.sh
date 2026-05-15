@@ -2,13 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: OCI DNS Subzones and Resource Principal Auth
-current_phase: 5
-current_phase_name: Documentation and Release Verification
-current_plan: Complete
-status: complete
+status: Awaiting next milestone
 stopped_at: Completed 05-03-PLAN.md
-last_updated: "2026-05-15T07:15:21.112Z"
-last_activity: 2026-05-15 -- Phase 05 complete
+last_updated: "2026-05-15T07:34:59.403Z"
+last_activity: 2026-05-15 — Milestone v1.0 completed and archived
 progress:
   total_phases: 5
   completed_phases: 5
@@ -24,21 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-15)
 
 **Core value:** OCI DNS validation must choose the right zone and authenticate safely without breaking existing key-based OCI users.
-**Current focus:** v1 milestone complete — ready for milestone closeout
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 5 (Documentation and Release Verification) - COMPLETE
-Plan: Complete
-Current Phase: 5
-Current Phase Name: Documentation and Release Verification
-Total Phases: 5
-Current Plan: Complete
-Total Plans in Phase: 3
-Status: Complete
-Last activity: 2026-05-15 -- Phase 05 complete
-Last Activity Description: Phase 05 documentation, release verification, and v2 live-validation checklist complete
-Progress: [██████████] 100%
+Phase: Milestone v1.0 archived
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-05-15 — Milestone v1.0 completed and archived
 
 ## Performance Metrics
 
@@ -126,3 +116,7 @@ Items acknowledged and carried forward from milestone setup.
 Last Date: 2026-05-15T07:15:20.870Z
 Stopped At: Completed 05-03-PLAN.md
 Resume File: None
+
+## Operator Next Steps
+
+- Start the next milestone with `$gsd-new-milestone`
