@@ -109,9 +109,18 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 05-01: Update OCI provider metadata and user-facing documentation.
-- [ ] 05-02: Run shfmt and ShellCheck against the OCI hook and added shell test support.
-- [ ] 05-03: Capture final mocked proof and deferred live-validation notes.
+
+**Wave 1**
+
+- [ ] 05-01: Update OCI provider metadata and stale hook/test prose.
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 05-02: Create wiki-ready OCI DNS guide.
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 05-03: Run final release verification and capture v2 live-validation checklist.
 
 ## Progress
 
