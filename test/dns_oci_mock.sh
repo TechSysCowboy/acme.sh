@@ -627,6 +627,31 @@ le_test_oci_auth_resource_principal_detected_boundary() {
     _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/" "resource-principal boundary must not PATCH"
 }
 
+le_test_oci_auth_partial_key_falls_back_to_resource_principal() {
+  _reset_oci_mocks
+  MOCK_OCI_ZONES="example.com"
+  OCI_CLI_TENANCY="ocid1.tenancy.oc1..partial"
+  unset OCI_CLI_USER
+  OCI_CLI_REGION="us-ashburn-1"
+  unset OCI_CLI_KEY
+  unset OCI_CLI_KEY_FILE
+  OCI_RESOURCE_PRINCIPAL_VERSION="2.2"
+  OCI_RESOURCE_PRINCIPAL_RPST="/tmp/nonexistent-rpst"
+  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM="/tmp/nonexistent-private.pem"
+  OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
+
+  _assert_failure "partial API-key config should fall back to RP signing boundary" \
+    dns_oci_add "_acme-challenge.www.example.com" "rp-partial-key-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _assert_contains "$MOCK_ERROR_LOG" "OCI_CLI_USER" "partial-key diagnostic should name missing user" &&
+    _assert_contains "$MOCK_ERROR_LOG" "OCI_CLI_KEY" "partial-key diagnostic should name missing key material" &&
+    _assert_contains "$MOCK_ERROR_LOG" "_oci_auth_mode=resource_principal" "partial-key fallback did not select RP mode" &&
+    _assert_contains "$MOCK_ERROR_LOG" "signing is not implemented" "partial-key fallback did not reach RP boundary" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "resource principal values must not be persisted" &&
+    _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/" "partial-key RP boundary must not PATCH"
+}
+
 le_test_oci_secure_debug_boundaries() {
   _reset_oci_mocks
   _dummy_auth_header="Authorization: Signature ST\$TEST_DUMMY_RPST"
