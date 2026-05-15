@@ -866,6 +866,206 @@ le_test_oci_rp_signs_patch_body_headers() {
     _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "TEST_PATCH_SIGNATURE" "normal logs leaked PATCH signature"
 }
 
+le_test_oci_rp_refreshes_path_material_between_requests() {
+  _reset_oci_mocks
+
+  # shellcheck disable=SC1091
+  . ./dnsapi/dns_oci.sh
+
+  _mock_rpst_file="$_DNS_OCI_MOCK_DIR/refresh-rpst.token"
+  _mock_private_pem_file="$_DNS_OCI_MOCK_DIR/refresh-private.pem"
+  printf '%s' "TEST_RPST_GET" >"$_mock_rpst_file"
+  printf '%s' "TEST_PRIVATE_PEM_GET" >"$_mock_private_pem_file"
+
+  _get() {
+    _dns_oci_mock_append signed_requests "GET|$1|$_H2"
+    printf '%s' "TEST_RPST_PATCH" >"$_mock_rpst_file"
+    printf '%s' "TEST_PRIVATE_PEM_PATCH" >"$_mock_private_pem_file"
+    printf '%s' '{"id":"ocid1.dns-zone.oc1..example"}'
+  }
+
+  _post() {
+    _dns_oci_mock_append signed_requests "PATCH|$2|$_H5|$1"
+    printf '%s' '{}'
+  }
+
+  _sign() {
+    _mock_key_file="$1"
+    _mock_signing_string=$(cat)
+    case "$_mock_signing_string" in
+    *"(request-target): get "*) _mock_request="GET" ;;
+    *) _mock_request="PATCH" ;;
+    esac
+    cat "$_mock_key_file" >"$_DNS_OCI_MOCK_DIR/refresh_key_$_mock_request"
+    printf '%s' "TEST_${_mock_request}_SIGNATURE"
+  }
+
+  _mktemp() {
+    _mock_tmp_counter=$(_math "${_mock_tmp_counter:-0}" + 1)
+    _mock_tmp="$_DNS_OCI_MOCK_DIR/rp-refresh-signing-key-$_mock_tmp_counter"
+    : >"$_mock_tmp"
+    printf '%s' "$_mock_tmp"
+  }
+
+  unset OCI_CLI_TENANCY
+  unset OCI_CLI_USER
+  unset OCI_CLI_REGION
+  unset OCI_CLI_KEY
+  unset OCI_CLI_KEY_FILE
+  OCI_RESOURCE_PRINCIPAL_VERSION="2.2"
+  OCI_RESOURCE_PRINCIPAL_RPST="$_mock_rpst_file"
+  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM="$_mock_private_pem_file"
+  OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
+
+  _assert_success "resource-principal public add should refresh path-backed material" \
+    dns_oci_add "example.com" "refresh-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _mock_get_key="$(_dns_oci_mock_read refresh_key_GET)"
+  _mock_patch_key="$(_dns_oci_mock_read refresh_key_PATCH)"
+  _install_oci_mock_stubs
+
+  _mock_get_count=$(printf '%s\n' "$MOCK_SIGNED_REQUESTS" | grep -c '^GET|')
+  _mock_patch_count=$(printf '%s\n' "$MOCK_SIGNED_REQUESTS" | grep -c '^PATCH|')
+  _assert_eq "1" "$_mock_get_count" "refresh test should perform one GET" &&
+    _assert_eq "1" "$_mock_patch_count" "refresh test should perform one PATCH" &&
+    _assert_contains "$MOCK_SIGNED_REQUESTS" "keyId=\"ST\$TEST_RPST_GET\"" "GET did not use initial RPST" &&
+    _assert_contains "$MOCK_SIGNED_REQUESTS" "keyId=\"ST\$TEST_RPST_PATCH\"" "PATCH did not use refreshed RPST" &&
+    _assert_eq "TEST_PRIVATE_PEM_GET" "$_mock_get_key" "GET did not use initial private PEM" &&
+    _assert_eq "TEST_PRIVATE_PEM_PATCH" "$_mock_patch_key" "PATCH did not use refreshed private PEM" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS$MOCK_CLEARED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "resource-principal names must not be saved or cleared" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS$MOCK_CLEARED_KEYS" "TEST_RPST_GET" "initial RPST must not be saved or cleared" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS$MOCK_CLEARED_KEYS" "TEST_RPST_PATCH" "refreshed RPST must not be saved or cleared" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS$MOCK_CLEARED_KEYS" "TEST_PRIVATE_PEM_GET" "initial private PEM must not be saved or cleared" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS$MOCK_CLEARED_KEYS" "TEST_PRIVATE_PEM_PATCH" "refreshed private PEM must not be saved or cleared" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS$MOCK_CLEARED_KEYS" "$_mock_rpst_file" "RPST path must not be saved or cleared" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS$MOCK_CLEARED_KEYS" "$_mock_private_pem_file" "private PEM path must not be saved or cleared"
+}
+
+le_test_oci_rp_does_not_persist_or_normal_log_material() {
+  _reset_oci_mocks
+
+  # shellcheck disable=SC1091
+  . ./dnsapi/dns_oci.sh
+
+  _get() {
+    _dns_oci_mock_append signed_requests "GET|$1|$_H2"
+    printf '%s' '{"id":"ocid1.dns-zone.oc1..example"}'
+  }
+
+  _post() {
+    _dns_oci_mock_append signed_requests "PATCH|$2|$_H5|$1"
+    printf '%s' '{}'
+  }
+
+  _sign() {
+    _mock_key_file="$1"
+    _mock_signing_string=$(cat)
+    case "$_mock_signing_string" in
+    *"(request-target): get "*) _mock_request="GET" ;;
+    *) _mock_request="PATCH" ;;
+    esac
+    cat "$_mock_key_file" >"$_DNS_OCI_MOCK_DIR/no_log_key_$_mock_request"
+    printf '%s' "TEST_PUBLIC_${_mock_request}_SIGNATURE"
+  }
+
+  _mktemp() {
+    _mock_tmp_counter=$(_math "${_mock_tmp_counter:-0}" + 1)
+    _mock_tmp="$_DNS_OCI_MOCK_DIR/rp-public-signing-key-$_mock_tmp_counter"
+    : >"$_mock_tmp"
+    printf '%s' "$_mock_tmp"
+  }
+
+  unset OCI_CLI_TENANCY
+  unset OCI_CLI_USER
+  unset OCI_CLI_REGION
+  unset OCI_CLI_KEY
+  unset OCI_CLI_KEY_FILE
+  OCI_RESOURCE_PRINCIPAL_VERSION="2.2"
+  OCI_RESOURCE_PRINCIPAL_RPST="TEST_PUBLIC_RPST"
+  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM="TEST_PUBLIC_PRIVATE_PEM"
+  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM_PASSPHRASE="TEST_PUBLIC_PASSPHRASE"
+  OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
+
+  _assert_success "resource-principal public add should keep normal logs clean" \
+    dns_oci_add "example.com" "no-log-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _install_oci_mock_stubs
+  _normal_logs="$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG"
+
+  _assert_contains "$MOCK_SIGNED_REQUESTS" "keyId=\"ST\$TEST_PUBLIC_RPST\"" "public RP add did not use RPST keyId" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS$MOCK_CLEARED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "RP names must not be saved or cleared" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS$MOCK_CLEARED_KEYS" "TEST_PUBLIC_RPST" "RPST must not be saved or cleared" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS$MOCK_CLEARED_KEYS" "TEST_PUBLIC_PRIVATE_PEM" "private PEM must not be saved or cleared" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS$MOCK_CLEARED_KEYS" "TEST_PUBLIC_PASSPHRASE" "passphrase must not be saved or cleared" &&
+    _assert_not_contains "$_normal_logs" "TEST_PUBLIC_RPST" "normal logs leaked RPST" &&
+    _assert_not_contains "$_normal_logs" "TEST_PUBLIC_PRIVATE_PEM" "normal logs leaked private PEM" &&
+    _assert_not_contains "$_normal_logs" "TEST_PUBLIC_PASSPHRASE" "normal logs leaked passphrase" &&
+    _assert_not_contains "$_normal_logs" "Authorization:" "normal logs leaked Authorization" &&
+    _assert_not_contains "$_normal_logs" "ST\$" "normal logs leaked ST keyId" &&
+    _assert_not_contains "$_normal_logs" "TEST_PUBLIC_GET_SIGNATURE" "normal logs leaked GET signature" &&
+    _assert_not_contains "$_normal_logs" "TEST_PUBLIC_PATCH_SIGNATURE" "normal logs leaked PATCH signature" &&
+    _assert_contains "$MOCK_SECURE_DEBUG_LOG" "(request-target): get" "secure debug missing GET signing string" &&
+    _assert_contains "$MOCK_SECURE_DEBUG_LOG" "Authorization: Signature" "secure debug missing Authorization header" &&
+    _assert_not_contains "$MOCK_SECURE_DEBUG_LOG" "TEST_PUBLIC_PASSPHRASE" "secure debug must not include passphrase value"
+}
+
+le_test_oci_rp_signing_failure_stops_zone_fallback() {
+  _reset_oci_mocks
+
+  # shellcheck disable=SC1091
+  . ./dnsapi/dns_oci.sh
+
+  _get() {
+    _dns_oci_mock_append signed_requests "GET|$1|$_H2"
+    case "$1" in
+    *"/20180115/zones/example.com") printf '%s' '{"id":"ocid1.dns-zone.oc1..example"}' ;;
+    *) printf '%s' '{"status":404,"code":"NotAuthorizedOrNotFound"}' ;;
+    esac
+  }
+
+  _post() {
+    _dns_oci_mock_append signed_requests "PATCH|$2|$_H5|$1"
+    printf '%s' '{}'
+  }
+
+  _sign() {
+    cat >"$_DNS_OCI_MOCK_DIR/failed_signing_string"
+    return 1
+  }
+
+  _mktemp() {
+    _mock_tmp="$_DNS_OCI_MOCK_DIR/rp-failed-signing-key"
+    : >"$_mock_tmp"
+    printf '%s' "$_mock_tmp"
+  }
+
+  unset OCI_CLI_TENANCY
+  unset OCI_CLI_USER
+  unset OCI_CLI_REGION
+  unset OCI_CLI_KEY
+  unset OCI_CLI_KEY_FILE
+  OCI_RESOURCE_PRINCIPAL_VERSION="2.2"
+  OCI_RESOURCE_PRINCIPAL_RPST="TEST_FAIL_RPST"
+  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM="TEST_FAIL_PRIVATE_PEM"
+  OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
+
+  _assert_failure "resource-principal signing failure should stop zone fallback" \
+    dns_oci_add "_acme-challenge.www.dev.example.com" "fail-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _install_oci_mock_stubs
+
+  _assert_contains "$MOCK_ERROR_LOG" "resource principal signing failed" "signing failure diagnostic missing" &&
+    _assert_not_contains "$MOCK_SIGNED_REQUESTS" "/20180115/zones/example.com" "parent zone lookup must not be attempted after signing failure" &&
+    _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|" "PATCH must not be attempted after signing failure" &&
+    _assert_not_contains "$MOCK_ERROR_LOG" "DNS Zone not found" "generic zone-not-found diagnostic must not hide signing failure" &&
+    _assert_not_contains "$MOCK_ERROR_LOG$MOCK_DEBUG_LOG$MOCK_INFO_LOG" "TEST_FAIL_RPST" "signing failure logs leaked RPST" &&
+    _assert_not_contains "$MOCK_ERROR_LOG$MOCK_DEBUG_LOG$MOCK_INFO_LOG" "TEST_FAIL_PRIVATE_PEM" "signing failure logs leaked private PEM" &&
+    _assert_not_contains "$MOCK_ERROR_LOG$MOCK_DEBUG_LOG$MOCK_INFO_LOG" "Authorization:" "signing failure logs leaked Authorization"
+}
+
 le_test_oci_auth_api_key() {
   _reset_oci_mocks
   MOCK_OCI_ZONES="example.com"
