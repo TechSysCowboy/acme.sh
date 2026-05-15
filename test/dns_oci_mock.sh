@@ -184,6 +184,11 @@ _install_oci_mock_stubs() {
     _mock_body="$3"
     _mock_return_field="$4"
 
+    if [ "$_oci_auth_mode" = "resource_principal" ]; then
+      _err "Error: _oci_auth_mode=resource_principal; resource principal signing is not implemented yet."
+      return 1
+    fi
+
     _dns_oci_mock_append signed_requests "$_mock_method|$_mock_target|$_mock_body|$_mock_return_field"
 
     case "$_mock_method|$_mock_target" in
@@ -597,6 +602,29 @@ le_test_oci_auth_resource_principal_current_state() {
     _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/" "resource-principal current state must not PATCH" &&
     _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_RESOURCE_PRINCIPAL_RPST" "RPST path must not be saved" &&
     _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM" "resource principal private key path must not be saved"
+}
+
+le_test_oci_auth_resource_principal_detected_boundary() {
+  _reset_oci_mocks
+  MOCK_OCI_ZONES="example.com"
+  unset OCI_CLI_TENANCY
+  unset OCI_CLI_USER
+  unset OCI_CLI_REGION
+  unset OCI_CLI_KEY
+  unset OCI_CLI_KEY_FILE
+  OCI_RESOURCE_PRINCIPAL_VERSION="2.2"
+  OCI_RESOURCE_PRINCIPAL_RPST="/tmp/nonexistent-rpst"
+  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM="/tmp/nonexistent-private.pem"
+  OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
+
+  _assert_failure "resource-principal auth should stop at Phase 3 signing boundary" \
+    dns_oci_add "_acme-challenge.www.example.com" "rp-boundary-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _assert_contains "$MOCK_ERROR_LOG" "_oci_auth_mode=resource_principal" "resource-principal mode was not recorded" &&
+    _assert_contains "$MOCK_ERROR_LOG" "resource principal" "resource-principal diagnostic missing" &&
+    _assert_contains "$MOCK_ERROR_LOG" "signing is not implemented" "resource-principal signing boundary missing" &&
+    _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/" "resource-principal boundary must not PATCH"
 }
 
 le_test_oci_secure_debug_boundaries() {
