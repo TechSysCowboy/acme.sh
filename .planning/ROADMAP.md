@@ -78,7 +78,7 @@ Plans:
 Plans:
 - [x] 03-01: Extract auth-mode selection from `_oci_config` without changing the public hook contract.
 - [x] 03-02: Preserve OCI CLI config and `OCI_CLI_*` persistence semantics.
-- [ ] 03-03: Add missing-auth and fallback tests for key-based and resource-principal paths.
+- [x] 03-03: Add missing-auth and fallback tests for key-based and resource-principal paths.
 
 ### Phase 4: Resource Principal Signing
 **Goal:** Implement OCI resource principal request signing using OCI-provided session token and ephemeral private key material while keeping secrets out of persisted config and normal logs.
