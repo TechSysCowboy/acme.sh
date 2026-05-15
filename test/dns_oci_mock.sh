@@ -142,6 +142,7 @@ TEST_DUMMY_PRIVATE_KEY
   unset OCI_RESOURCE_PRINCIPAL_VERSION
   unset OCI_RESOURCE_PRINCIPAL_RPST
   unset OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM
+  unset OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM_PASSPHRASE
   unset OCI_RESOURCE_PRINCIPAL_REGION
 }
 
@@ -576,6 +577,73 @@ le_test_oci_signed_request_return_field() {
   _install_oci_mock_stubs
 
   _assert_eq "ocid1.dns-zone.oc1..example" "$_actual" "return-field parser should not append stray characters"
+}
+
+le_test_oci_rp_loads_inline_material() {
+  _reset_oci_mocks
+  unset OCI_CLI_TENANCY
+  unset OCI_CLI_USER
+  unset OCI_CLI_REGION
+  unset OCI_CLI_KEY
+  unset OCI_CLI_KEY_FILE
+  OCI_RESOURCE_PRINCIPAL_VERSION="2.2"
+  OCI_RESOURCE_PRINCIPAL_RPST="TEST_INLINE_RPST"
+  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM="TEST_INLINE_PRIVATE_PEM"
+  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM_PASSPHRASE="TEST_INLINE_PASSPHRASE"
+  OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
+
+  _assert_success "inline resource principal material should load" \
+    _oci_load_resource_principal_material || return 1
+
+  _dns_oci_mock_refresh_captures
+  _assert_eq "TEST_INLINE_RPST" "$_oci_rp_rpst" "inline RPST was not loaded" &&
+    _assert_eq "TEST_INLINE_PRIVATE_PEM" "$_oci_rp_private_pem" "inline private PEM was not loaded" &&
+    _assert_eq "TEST_INLINE_PASSPHRASE" "$_oci_rp_private_pem_passphrase" "inline passphrase was not loaded" &&
+    _assert_eq "us-ashburn-1" "$_oci_rp_region" "inline region was not loaded" &&
+    _assert_eq "us-ashburn-1" "$OCI_RESOURCE_PRINCIPAL_REGION" "resource principal region env changed" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "resource principal values must not be saved" &&
+    _assert_not_contains "$MOCK_CLEARED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "resource principal values must not be cleared" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "TEST_INLINE_RPST" "normal logs leaked inline RPST" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "TEST_INLINE_PRIVATE_PEM" "normal logs leaked inline private PEM" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "TEST_INLINE_PASSPHRASE" "normal logs leaked inline passphrase"
+}
+
+le_test_oci_rp_loads_path_material() {
+  _reset_oci_mocks
+  unset OCI_CLI_TENANCY
+  unset OCI_CLI_USER
+  unset OCI_CLI_REGION
+  unset OCI_CLI_KEY
+  unset OCI_CLI_KEY_FILE
+  _mock_rpst_file="$_DNS_OCI_MOCK_DIR/rpst.token"
+  _mock_private_pem_file="$_DNS_OCI_MOCK_DIR/private.pem"
+  _mock_passphrase_file="$_DNS_OCI_MOCK_DIR/passphrase.txt"
+  printf '%s' "TEST_PATH_RPST" >"$_mock_rpst_file"
+  printf '%s' "TEST_PATH_PRIVATE_PEM" >"$_mock_private_pem_file"
+  printf '%s' "TEST_PATH_PASSPHRASE" >"$_mock_passphrase_file"
+  OCI_RESOURCE_PRINCIPAL_VERSION="2.2"
+  OCI_RESOURCE_PRINCIPAL_RPST="$_mock_rpst_file"
+  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM="$_mock_private_pem_file"
+  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM_PASSPHRASE="$_mock_passphrase_file"
+  OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
+
+  _assert_success "path resource principal material should load" \
+    _oci_load_resource_principal_material || return 1
+
+  _dns_oci_mock_refresh_captures
+  _assert_eq "TEST_PATH_RPST" "$_oci_rp_rpst" "path RPST was not loaded" &&
+    _assert_eq "TEST_PATH_PRIVATE_PEM" "$_oci_rp_private_pem" "path private PEM was not loaded" &&
+    _assert_eq "TEST_PATH_PASSPHRASE" "$_oci_rp_private_pem_passphrase" "path passphrase was not loaded" &&
+    _assert_eq "us-ashburn-1" "$_oci_rp_region" "path region was not loaded" &&
+    _assert_eq "us-ashburn-1" "$OCI_RESOURCE_PRINCIPAL_REGION" "resource principal region env changed" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "resource principal values must not be saved" &&
+    _assert_not_contains "$MOCK_CLEARED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "resource principal values must not be cleared" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "TEST_PATH_RPST" "normal logs leaked path RPST" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "TEST_PATH_PRIVATE_PEM" "normal logs leaked path private PEM" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "TEST_PATH_PASSPHRASE" "normal logs leaked path passphrase" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "$_mock_rpst_file" "normal logs leaked RPST path" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "$_mock_private_pem_file" "normal logs leaked private PEM path" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "$_mock_passphrase_file" "normal logs leaked passphrase path"
 }
 
 le_test_oci_auth_api_key() {
