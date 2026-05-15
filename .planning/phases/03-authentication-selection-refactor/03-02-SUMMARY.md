@@ -10,6 +10,7 @@ provides:
   - API-key-wins-over-resource-principal proof
   - OCI CLI config-file primary proof
   - Resource-principal no-persistence proof
+  - Saved API-key config survival proof during RP fallback
 affects: [dns_oci, auth-selection, account-config]
 tech-stack:
   added: []
@@ -47,11 +48,13 @@ completed: 2026-05-15
 - Added `le_test_oci_auth_api_key_wins_over_resource_principal` to prove complete API-key config wins over complete RP env.
 - Added config-file fixture support and `le_test_oci_auth_oci_cli_config_file_primary` to prove the OCI CLI config path still reaches PATCH through API-key mode.
 - Added no-persistence and missing-all-auth tests that distinguish API-key and RP failures without saving or clearing RP values.
+- Added account-config fixture reads and `le_test_oci_auth_saved_config_survives_resource_principal_fallback` to prove saved API-key config values survive RP fallback runs.
 
 ## Task Commits
 
 1. **Task 1: Prove API-key wins over complete RP env** - `7559adbb` (test)
 2. **Task 2: Prove OCI CLI config and RP persistence boundaries** - `7559adbb` (test)
+   - Follow-up saved-config survival proof - `e418b144` (test)
 3. **Task 3: Tighten missing-all-auth diagnostics** - `7559adbb` (test)
 
 ## Files Created/Modified
@@ -78,6 +81,7 @@ None - no external service configuration required.
 ## Verification
 
 - `CASE=le_test_oci_auth_api_key_wins_over_resource_principal,le_test_oci_auth_resource_principal_does_not_persist sh test/dns_oci_mock.sh` - passed
+- `CASE=le_test_oci_auth_saved_config_survives_resource_principal_fallback sh test/dns_oci_mock.sh` - passed
 - `CASE=le_test_oci_auth_api_key,le_test_oci_auth_oci_cli_config_file_primary,le_test_oci_auth_missing_reports_both_paths sh test/dns_oci_mock.sh` - passed
 - `sh test/dns_oci_mock.sh` - passed
 - `shellcheck -e SC2181 -e SC2089 test/dns_oci_mock.sh dnsapi/dns_oci.sh` - passed
@@ -87,6 +91,7 @@ None - no external service configuration required.
 - Complete API-key config wins when RP env is also complete.
 - OCI CLI config-file values still configure API-key auth and reach PATCH.
 - Resource-principal variable names and fixture values stay out of saved and cleared account-config captures.
+- Saved API-key account config values survive RP fallback selection.
 - Missing-all-auth diagnostics name both key-based and RP configuration problems.
 
 ## Next Phase Readiness

@@ -89,6 +89,7 @@ None - no external service configuration required.
 - AUTH-01 is covered by env API-key, OCI CLI config-file, and API-key-wins tests.
 - AUTH-02 is covered by RP-only and partial-key fallback tests.
 - AUTH-03 is covered by partial-key and missing-all-auth diagnostics tests.
+- Saved API-key account config survival is covered by the RP fallback persistence test.
 - RP fallback fails before signing or PATCH in Phase 3.
 - RP values remain ephemeral and unpersisted in mock captures.
 
