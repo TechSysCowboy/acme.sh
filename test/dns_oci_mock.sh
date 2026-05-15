@@ -794,6 +794,78 @@ le_test_oci_rp_signs_get_with_st_key_id() {
     _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "TEST_SIGNATURE" "normal logs leaked signature"
 }
 
+le_test_oci_rp_signs_patch_body_headers() {
+  _reset_oci_mocks
+
+  # shellcheck disable=SC1091
+  . ./dnsapi/dns_oci.sh
+
+  _post() {
+    _mock_body="$1"
+    _mock_url="$2"
+    _mock_method="$4"
+    _dns_oci_mock_append signed_requests "REAL_PATCH|$_mock_url|$_mock_method|$_H1|$_H2|$_H3|$_H4|$_H5|$_mock_body"
+    printf '%s' '{"patched":true}'
+  }
+
+  _sign() {
+    _mock_key_file="$1"
+    _mock_algorithm="$2"
+    _dns_oci_mock_append signing_algorithms "$_mock_algorithm"
+    cat >"$_DNS_OCI_MOCK_DIR/patch_signing_string"
+    cat "$_mock_key_file" >"$_DNS_OCI_MOCK_DIR/patch_signing_key"
+    printf '%s' "TEST_PATCH_SIGNATURE"
+  }
+
+  _mktemp() {
+    _mock_tmp="$_DNS_OCI_MOCK_DIR/rp-patch-signing-key"
+    : >"$_mock_tmp"
+    printf '%s' "$_mock_tmp"
+  }
+
+  _oci_auth_mode="resource_principal"
+  OCI_RESOURCE_PRINCIPAL_VERSION="2.2"
+  OCI_RESOURCE_PRINCIPAL_RPST="TEST_PATCH_RPST"
+  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM="TEST_PATCH_PRIVATE_PEM"
+  OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
+  _mock_body='{"items":[]}'
+  _mock_body_length="${#_mock_body}"
+
+  if ! _signed_request "PATCH" "/20180115/zones/example.com/records" "$_mock_body" >"$_DNS_OCI_MOCK_DIR/patch_response"; then
+    _fail "resource-principal PATCH should sign body headers"
+    return 1
+  fi
+
+  _dns_oci_mock_refresh_captures
+  _actual="$(_dns_oci_mock_read patch_response)"
+  _mock_signing_string="$(_dns_oci_mock_read patch_signing_string)"
+  _mock_signing_key="$(_dns_oci_mock_read patch_signing_key)"
+  _install_oci_mock_stubs
+
+  _assert_contains "$MOCK_SIGNED_REQUESTS" "REAL_PATCH|https://dns.us-ashburn-1.oraclecloud.com/20180115/zones/example.com/records|PATCH|date:" "PATCH did not receive date header" &&
+    _assert_contains "$_H2" "x-content-sha256:" "PATCH body hash header missing" &&
+    _assert_eq "content-type: application/json" "$_H3" "PATCH content type header changed" &&
+    _assert_eq "content-length: $_mock_body_length" "$_H4" "PATCH content length header changed" &&
+    _assert_contains "$_H5" "Authorization: Signature" "PATCH Authorization header missing Signature scheme" &&
+    _assert_contains "$_H5" 'keyId="ST$TEST_PATCH_RPST"' "PATCH Authorization keyId must use ST token shape" &&
+    _assert_contains "$_H5" 'headers="(request-target) date host x-content-sha256 content-type content-length"' "PATCH signed header list changed" &&
+    _assert_contains "$_H5" 'signature="TEST_PATCH_SIGNATURE"' "PATCH signature missing" &&
+    _assert_eq '{"patched":true}' "$_actual" "PATCH response body changed" &&
+    _assert_contains "$_mock_signing_string" "(request-target): patch /20180115/zones/example.com/records" "PATCH signing string missing request target" &&
+    _assert_contains "$_mock_signing_string" "x-content-sha256:" "PATCH signing string missing body hash" &&
+    _assert_contains "$_mock_signing_string" "content-type: application/json" "PATCH signing string missing content type" &&
+    _assert_contains "$_mock_signing_string" "content-length: $_mock_body_length" "PATCH signing string missing content length" &&
+    _assert_eq "TEST_PATCH_PRIVATE_PEM" "$_mock_signing_key" "PATCH signer did not write RP private PEM to temp key" &&
+    _assert_success "PATCH signer should remove temp key file" test ! -e "$_DNS_OCI_MOCK_DIR/rp-patch-signing-key" &&
+    _assert_eq "" "$_oci_rp_rpst" "PATCH signer should reset loaded RPST" &&
+    _assert_eq "" "$_oci_rp_private_pem" "PATCH signer should reset loaded private PEM" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "TEST_PATCH_RPST" "normal logs leaked PATCH RPST" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "TEST_PATCH_PRIVATE_PEM" "normal logs leaked PATCH private PEM" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" 'ST$TEST_PATCH_RPST' "normal logs leaked PATCH ST keyId" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "Authorization:" "normal logs leaked PATCH Authorization header" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "TEST_PATCH_SIGNATURE" "normal logs leaked PATCH signature"
+}
+
 le_test_oci_auth_api_key() {
   _reset_oci_mocks
   MOCK_OCI_ZONES="example.com"
