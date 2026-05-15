@@ -121,6 +121,10 @@ _reset_oci_mocks() {
   MOCK_INFO_LOG=""
   MOCK_LOOKUP_LOG=""
   MOCK_OCI_PATCH_RESPONSE="{}"
+  MOCK_OCI_READINI_TENANCY=""
+  MOCK_OCI_READINI_USER=""
+  MOCK_OCI_READINI_REGION=""
+  MOCK_OCI_READINI_KEY_FILE=""
 
   HOME="$_DNS_OCI_MOCK_DIR/home"
   mkdir -p "$HOME"
@@ -254,6 +258,21 @@ _install_oci_mock_stubs() {
 
   _readini() {
     _dns_oci_mock_append readini_keys "$1|$2|$3"
+
+    case "$2" in
+    tenancy)
+      printf '%s' "$MOCK_OCI_READINI_TENANCY"
+      ;;
+    user)
+      printf '%s' "$MOCK_OCI_READINI_USER"
+      ;;
+    region)
+      printf '%s' "$MOCK_OCI_READINI_REGION"
+      ;;
+    key_file)
+      printf '%s' "$MOCK_OCI_READINI_KEY_FILE"
+      ;;
+    esac
   }
 
   _debug() {
@@ -650,6 +669,115 @@ le_test_oci_auth_partial_key_falls_back_to_resource_principal() {
     _assert_contains "$MOCK_ERROR_LOG" "signing is not implemented" "partial-key fallback did not reach RP boundary" &&
     _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "resource principal values must not be persisted" &&
     _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/" "partial-key RP boundary must not PATCH"
+}
+
+le_test_oci_auth_api_key_wins_over_resource_principal() {
+  _reset_oci_mocks
+  MOCK_OCI_ZONES="example.com"
+  OCI_RESOURCE_PRINCIPAL_VERSION="2.2"
+  OCI_RESOURCE_PRINCIPAL_RPST="/tmp/rpst.token"
+  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM="/tmp/private.pem"
+  OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
+
+  _assert_success "complete API-key config should win over complete RP env" \
+    dns_oci_add "_acme-challenge.www.example.com" "api-key-wins-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _assert_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/example.com/records|" "API-key-wins path did not reach PATCH" &&
+    _assert_eq "api_key" "$_oci_auth_mode" "API-key config should select api_key mode" &&
+    _assert_contains "$MOCK_SAVED_KEYS" "OCI_CLI_TENANCY=ocid1.tenancy.oc1..test" "tenancy was not persisted" &&
+    _assert_contains "$MOCK_SAVED_KEYS" "OCI_CLI_USER=ocid1.user.oc1..test" "user was not persisted" &&
+    _assert_contains "$MOCK_SAVED_KEYS" "OCI_CLI_REGION=us-ashburn-1" "region was not persisted" &&
+    _assert_contains "$MOCK_SAVED_KEYS" "OCI_CLI_KEY=-----BEGIN PRIVATE KEY-----" "key was not persisted" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_RESOURCE_PRINCIPAL" "RP values must not be saved when API-key wins" &&
+    _assert_not_contains "$MOCK_CLEARED_KEYS" "OCI_RESOURCE_PRINCIPAL" "RP values must not be cleared when API-key wins" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG" "OCI_RESOURCE_PRINCIPAL" "normal debug must not mention RP when API-key wins" &&
+    _assert_not_contains "$MOCK_INFO_LOG" "OCI_RESOURCE_PRINCIPAL" "normal info must not mention RP when API-key wins"
+}
+
+le_test_oci_auth_oci_cli_config_file_primary() {
+  _reset_oci_mocks
+  MOCK_OCI_ZONES="example.com"
+  _mock_config_file="$_DNS_OCI_MOCK_DIR/oci-config"
+  _mock_key_file="$_DNS_OCI_MOCK_DIR/oci-api-key.pem"
+  : >"$_mock_config_file"
+  printf '%s\n' "-----BEGIN PRIVATE KEY-----" "CONFIG_FILE_PRIVATE_KEY" "-----END PRIVATE KEY-----" >"$_mock_key_file"
+  MOCK_OCI_READINI_TENANCY="ocid1.tenancy.oc1..config"
+  MOCK_OCI_READINI_USER="ocid1.user.oc1..config"
+  MOCK_OCI_READINI_REGION="us-phoenix-1"
+  MOCK_OCI_READINI_KEY_FILE="$_mock_key_file"
+  OCI_CLI_CONFIG_FILE="$_mock_config_file"
+  OCI_CLI_PROFILE="DEFAULT"
+  unset OCI_CLI_TENANCY
+  unset OCI_CLI_USER
+  unset OCI_CLI_REGION
+  unset OCI_CLI_KEY
+  unset OCI_CLI_KEY_FILE
+
+  _assert_success "OCI CLI config file should remain an API-key auth source" \
+    dns_oci_add "_acme-challenge.www.example.com" "config-file-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _assert_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/example.com/records|" "config-file path did not reach PATCH" &&
+    _assert_eq "api_key" "$_oci_auth_mode" "OCI CLI config file should select api_key mode" &&
+    _assert_contains "$MOCK_READINI_KEYS" "$_mock_config_file|tenancy|DEFAULT" "tenancy was not read from config" &&
+    _assert_contains "$MOCK_READINI_KEYS" "$_mock_config_file|user|DEFAULT" "user was not read from config" &&
+    _assert_contains "$MOCK_READINI_KEYS" "$_mock_config_file|region|DEFAULT" "region was not read from config" &&
+    _assert_contains "$MOCK_READINI_KEYS" "$_mock_config_file|key_file|DEFAULT" "key_file was not read from config" &&
+    _assert_contains "$MOCK_SAVED_KEYS" "OCI_CLI_CONFIG_FILE=$_mock_config_file" "non-default config path was not persisted" &&
+    _assert_contains "$MOCK_SAVED_KEYS" "OCI_CLI_KEY=" "config key material was not persisted"
+}
+
+le_test_oci_auth_resource_principal_does_not_persist() {
+  _reset_oci_mocks
+  MOCK_OCI_ZONES="example.com"
+  unset OCI_CLI_TENANCY
+  unset OCI_CLI_USER
+  unset OCI_CLI_REGION
+  unset OCI_CLI_KEY
+  unset OCI_CLI_KEY_FILE
+  OCI_RESOURCE_PRINCIPAL_VERSION="2.2"
+  OCI_RESOURCE_PRINCIPAL_RPST="/tmp/rpst.token"
+  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM="/tmp/private.pem"
+  OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
+
+  _assert_failure "resource-principal boundary should not persist RP values" \
+    dns_oci_add "_acme-challenge.www.example.com" "rp-no-persist-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _assert_contains "$MOCK_ERROR_LOG" "_oci_auth_mode=resource_principal" "RP mode should be observable in the boundary diagnostic" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "RP variable names must not be saved" &&
+    _assert_not_contains "$MOCK_CLEARED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "RP variable names must not be cleared" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS" "/tmp/rpst.token" "RPST path must not be saved" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS" "/tmp/private.pem" "private PEM path must not be saved" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS" "2.2" "RP version must not be saved" &&
+    _assert_not_contains "$MOCK_CLEARED_KEYS" "/tmp/rpst.token" "RPST path must not be cleared" &&
+    _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/" "RP no-persist boundary must not PATCH"
+}
+
+le_test_oci_auth_missing_reports_both_paths() {
+  _reset_oci_mocks
+  MOCK_OCI_ZONES="example.com"
+  unset OCI_CLI_TENANCY
+  unset OCI_CLI_USER
+  unset OCI_CLI_REGION
+  unset OCI_CLI_KEY
+  unset OCI_CLI_KEY_FILE
+  unset OCI_RESOURCE_PRINCIPAL_VERSION
+  unset OCI_RESOURCE_PRINCIPAL_RPST
+  unset OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM
+  unset OCI_RESOURCE_PRINCIPAL_REGION
+
+  _assert_failure "missing all auth should report both key and RP paths" \
+    dns_oci_add "_acme-challenge.www.example.com" "missing-both-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _assert_contains "$MOCK_ERROR_LOG" "OCI_CLI_TENANCY" "missing-all auth should name key-based fields" &&
+    _assert_contains "$MOCK_ERROR_LOG" "OCI_RESOURCE_PRINCIPAL_VERSION" "missing-all auth should name RP version" &&
+    _assert_contains "$MOCK_ERROR_LOG" "OCI_RESOURCE_PRINCIPAL_RPST" "missing-all auth should name RPST" &&
+    _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/" "missing-all auth must not PATCH" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "missing-all auth must not save RP values" &&
+    _assert_not_contains "$MOCK_CLEARED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "missing-all auth must not clear RP values"
 }
 
 le_test_oci_secure_debug_boundaries() {
