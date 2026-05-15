@@ -81,6 +81,10 @@ dns_oci_rm() {
 
 ####################  Private functions below ##################################
 _oci_auth_mode=""
+_oci_rp_rpst=""
+_oci_rp_private_pem=""
+_oci_rp_private_pem_passphrase=""
+_oci_rp_region=""
 
 _get_oci_zone() {
 
@@ -157,6 +161,71 @@ _oci_report_resource_principal_auth_missing() {
     _oci_missing_resource_principal_fields=$(printf "%s" "$_oci_missing_resource_principal_fields" | sed 's/^ //')
     _err "Error: OCI resource principal authentication is incomplete. Missing: $_oci_missing_resource_principal_fields."
   fi
+}
+
+_oci_reset_resource_principal_material() {
+  _oci_rp_rpst=""
+  _oci_rp_private_pem=""
+  _oci_rp_private_pem_passphrase=""
+  _oci_rp_region=""
+}
+
+_oci_read_resource_principal_value() {
+  _oci_rp_env_name="$1"
+  _oci_rp_required="${2:-}"
+
+  eval "_oci_rp_env_value=\${$_oci_rp_env_name:-}"
+
+  if [ -z "$_oci_rp_env_value" ]; then
+    if [ "$_oci_rp_required" = "required" ]; then
+      _err "Error: OCI resource principal material $_oci_rp_env_name missing."
+      return 1
+    fi
+    return 0
+  fi
+
+  if [ -f "$_oci_rp_env_value" ]; then
+    if ! _oci_rp_file_value=$(cat "$_oci_rp_env_value" 2>/dev/null); then
+      _err "Error: OCI resource principal material $_oci_rp_env_name unreadable."
+      return 1
+    fi
+    printf "%s" "$_oci_rp_file_value"
+    return 0
+  fi
+
+  printf "%s" "$_oci_rp_env_value"
+}
+
+_oci_load_resource_principal_material() {
+  _oci_reset_resource_principal_material
+
+  if [ "$OCI_RESOURCE_PRINCIPAL_VERSION" != "2.2" ]; then
+    _err "Error: OCI resource principal material OCI_RESOURCE_PRINCIPAL_VERSION=2.2 unsupported."
+    return 1
+  fi
+
+  if [ -z "$OCI_RESOURCE_PRINCIPAL_REGION" ]; then
+    _err "Error: OCI resource principal material OCI_RESOURCE_PRINCIPAL_REGION missing."
+    return 1
+  fi
+
+  if ! _oci_rp_rpst="$(_oci_read_resource_principal_value OCI_RESOURCE_PRINCIPAL_RPST required)"; then
+    _oci_reset_resource_principal_material
+    return 1
+  fi
+
+  if ! _oci_rp_private_pem="$(_oci_read_resource_principal_value OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM required)"; then
+    _oci_reset_resource_principal_material
+    return 1
+  fi
+
+  if ! _oci_rp_private_pem_passphrase="$(_oci_read_resource_principal_value OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM_PASSPHRASE optional)"; then
+    _oci_reset_resource_principal_material
+    return 1
+  fi
+
+  _oci_rp_region="$OCI_RESOURCE_PRINCIPAL_REGION"
+  return 0
 }
 
 _oci_config() {

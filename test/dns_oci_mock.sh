@@ -605,7 +605,12 @@ le_test_oci_rp_loads_inline_material() {
     _assert_not_contains "$MOCK_CLEARED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "resource principal values must not be cleared" &&
     _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "TEST_INLINE_RPST" "normal logs leaked inline RPST" &&
     _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "TEST_INLINE_PRIVATE_PEM" "normal logs leaked inline private PEM" &&
-    _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "TEST_INLINE_PASSPHRASE" "normal logs leaked inline passphrase"
+    _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "TEST_INLINE_PASSPHRASE" "normal logs leaked inline passphrase" || return 1
+
+  _oci_reset_resource_principal_material
+  _assert_eq "" "$_oci_rp_rpst" "reset should blank inline RPST" &&
+    _assert_eq "" "$_oci_rp_private_pem" "reset should blank inline private PEM" &&
+    _assert_eq "" "$_oci_rp_private_pem_passphrase" "reset should blank inline passphrase"
 }
 
 le_test_oci_rp_loads_path_material() {
@@ -643,7 +648,12 @@ le_test_oci_rp_loads_path_material() {
     _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "TEST_PATH_PASSPHRASE" "normal logs leaked path passphrase" &&
     _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "$_mock_rpst_file" "normal logs leaked RPST path" &&
     _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "$_mock_private_pem_file" "normal logs leaked private PEM path" &&
-    _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "$_mock_passphrase_file" "normal logs leaked passphrase path"
+    _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "$_mock_passphrase_file" "normal logs leaked passphrase path" || return 1
+
+  _oci_reset_resource_principal_material
+  _assert_eq "" "$_oci_rp_rpst" "reset should blank path RPST" &&
+    _assert_eq "" "$_oci_rp_private_pem" "reset should blank path private PEM" &&
+    _assert_eq "" "$_oci_rp_private_pem_passphrase" "reset should blank path passphrase"
 }
 
 le_test_oci_auth_api_key() {
