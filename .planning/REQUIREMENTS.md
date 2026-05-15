@@ -32,11 +32,11 @@
 
 ### Documentation and Verification
 
-- [ ] **DOC-01**: OCI DNS provider metadata documents authentication order, supported resource principal variables, delegated-subzone behavior, and required OCI policies.
-- [ ] **DOC-02**: User-facing docs explain how to configure OCI DNS with existing API-key auth and with resource principal auth.
+- [x] **DOC-01**: OCI DNS provider metadata documents authentication order, supported resource principal variables, delegated-subzone behavior, and required OCI policies.
+- [x] **DOC-02**: User-facing docs explain how to configure OCI DNS with existing API-key auth and with resource principal auth.
 - [x] **TEST-01**: Mocked shell-level tests cover longest-match zone discovery and relative TXT payload construction without live OCI DNS calls.
 - [x] **TEST-02**: Mocked shell-level tests cover key-based auth, resource-principal fallback, missing-auth failures, and secure logging boundaries.
-- [ ] **TEST-03**: Static verification runs ShellCheck and shfmt against the changed OCI hook and any added test harness files.
+- [x] **TEST-03**: Static verification runs ShellCheck and shfmt against the changed OCI hook and any added test harness files.
 
 ## v2 Requirements
 
@@ -81,9 +81,9 @@ Deferred to future release. Tracked but not in the current roadmap.
 | RP-02 | Phase 4 | Complete |
 | RP-03 | Phase 4 | Complete |
 | RP-04 | Phase 4 | Complete |
-| DOC-01 | Phase 5 | Pending |
-| DOC-02 | Phase 5 | Pending |
-| TEST-03 | Phase 5 | Pending |
+| DOC-01 | Phase 5 | Complete |
+| DOC-02 | Phase 5 | Complete |
+| TEST-03 | Phase 5 | Complete |
 
 **Coverage:**
 - v1 requirements: 18 total
