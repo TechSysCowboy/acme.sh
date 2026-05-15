@@ -155,6 +155,10 @@ _mock_oci_zone_response() {
   _dns_oci_mock_append zone_responses "$_mock_zone|$_mock_status|$_mock_code|$_mock_id|$_mock_message"
 }
 
+_mock_account_conf() {
+  _dns_oci_mock_append account_conf "$1=$2"
+}
+
 _mock_oci_zone_json() {
   _mock_status="$1"
   _mock_code="$2"
@@ -245,7 +249,18 @@ _install_oci_mock_stubs() {
   }
 
   _readaccountconf_mutable() {
-    :
+    _mock_account_key="$1"
+    _mock_account_value=""
+
+    if [ -f "$_DNS_OCI_MOCK_DIR/account_conf" ]; then
+      while IFS='=' read -r _candidate_key _candidate_value; do
+        if [ "$_candidate_key" = "$_mock_account_key" ]; then
+          _mock_account_value="$_candidate_value"
+        fi
+      done <"$_DNS_OCI_MOCK_DIR/account_conf"
+    fi
+
+    printf '%s' "$_mock_account_value"
   }
 
   _saveaccountconf_mutable() {
@@ -753,6 +768,35 @@ le_test_oci_auth_resource_principal_does_not_persist() {
     _assert_not_contains "$MOCK_SAVED_KEYS" "2.2" "RP version must not be saved" &&
     _assert_not_contains "$MOCK_CLEARED_KEYS" "/tmp/rpst.token" "RPST path must not be cleared" &&
     _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/" "RP no-persist boundary must not PATCH"
+}
+
+le_test_oci_auth_saved_config_survives_resource_principal_fallback() {
+  _reset_oci_mocks
+  MOCK_OCI_ZONES="example.com"
+  _mock_account_conf OCI_CLI_CONFIG_FILE "/tmp/saved-oci-config"
+  _mock_account_conf OCI_CLI_TENANCY "ocid1.tenancy.oc1..saved"
+  unset OCI_CLI_CONFIG_FILE
+  unset OCI_CLI_TENANCY
+  unset OCI_CLI_USER
+  unset OCI_CLI_REGION
+  unset OCI_CLI_KEY
+  unset OCI_CLI_KEY_FILE
+  OCI_RESOURCE_PRINCIPAL_VERSION="2.2"
+  OCI_RESOURCE_PRINCIPAL_RPST="/tmp/rpst.token"
+  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM="/tmp/private.pem"
+  OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
+
+  _assert_failure "saved API-key config should survive RP fallback" \
+    dns_oci_add "_acme-challenge.www.example.com" "rp-saved-config-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _assert_contains "$MOCK_ERROR_LOG" "_oci_auth_mode=resource_principal" "saved-config fallback should select RP mode" &&
+    _assert_contains "$MOCK_SAVED_KEYS" "OCI_CLI_CONFIG_FILE=/tmp/saved-oci-config" "saved config path should remain saved" &&
+    _assert_contains "$MOCK_SAVED_KEYS" "OCI_CLI_TENANCY=ocid1.tenancy.oc1..saved" "saved tenancy should remain saved" &&
+    _assert_not_contains "$MOCK_CLEARED_KEYS" "OCI_CLI_CONFIG_FILE" "saved config path must not be cleared" &&
+    _assert_not_contains "$MOCK_CLEARED_KEYS" "OCI_CLI_TENANCY" "saved tenancy must not be cleared" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "RP variable names must not be saved" &&
+    _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/" "saved-config RP fallback must not PATCH"
 }
 
 le_test_oci_auth_missing_reports_both_paths() {
