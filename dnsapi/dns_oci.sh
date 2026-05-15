@@ -80,9 +80,11 @@ dns_oci_rm() {
 }
 
 ####################  Private functions below ##################################
+_oci_auth_mode=""
+
 _get_oci_zone() {
 
-  if ! _oci_config; then
+  if ! _oci_select_auth; then
     return 1
   fi
 
@@ -97,6 +99,64 @@ _get_oci_zone() {
 
   return 0
 
+}
+
+_oci_select_auth() {
+  _oci_auth_mode=""
+
+  if _oci_config; then
+    _oci_auth_mode="api_key"
+    return 0
+  fi
+
+  _oci_report_api_key_auth_missing
+
+  if _oci_resource_principal_configured; then
+    _oci_auth_mode="resource_principal"
+    return 0
+  fi
+
+  _oci_report_resource_principal_auth_missing
+  return 1
+}
+
+_oci_report_api_key_auth_missing() {
+  _oci_missing_api_key_fields=""
+
+  [ -z "$OCI_CLI_TENANCY" ] && _oci_missing_api_key_fields="${_oci_missing_api_key_fields} OCI_CLI_TENANCY"
+  [ -z "$OCI_CLI_USER" ] && _oci_missing_api_key_fields="${_oci_missing_api_key_fields} OCI_CLI_USER"
+  [ -z "$OCI_CLI_REGION" ] && _oci_missing_api_key_fields="${_oci_missing_api_key_fields} OCI_CLI_REGION"
+  if [ -z "$OCI_CLI_KEY_FILE" ] && [ -z "$OCI_CLI_KEY" ]; then
+    _oci_missing_api_key_fields="${_oci_missing_api_key_fields} OCI_CLI_KEY_FILE or OCI_CLI_KEY"
+  fi
+
+  if [ "$_oci_missing_api_key_fields" ]; then
+    _oci_missing_api_key_fields=$(printf "%s" "$_oci_missing_api_key_fields" | sed 's/^ //')
+    _err "Error: OCI API-key authentication is incomplete. Missing: $_oci_missing_api_key_fields."
+  fi
+}
+
+_oci_resource_principal_configured() {
+  [ "$OCI_RESOURCE_PRINCIPAL_VERSION" = "2.2" ] || return 1
+  [ "$OCI_RESOURCE_PRINCIPAL_RPST" ] || return 1
+  [ "$OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM" ] || return 1
+  [ "$OCI_RESOURCE_PRINCIPAL_REGION" ] || return 1
+
+  return 0
+}
+
+_oci_report_resource_principal_auth_missing() {
+  _oci_missing_resource_principal_fields=""
+
+  [ "$OCI_RESOURCE_PRINCIPAL_VERSION" != "2.2" ] && _oci_missing_resource_principal_fields="${_oci_missing_resource_principal_fields} OCI_RESOURCE_PRINCIPAL_VERSION=2.2"
+  [ -z "$OCI_RESOURCE_PRINCIPAL_RPST" ] && _oci_missing_resource_principal_fields="${_oci_missing_resource_principal_fields} OCI_RESOURCE_PRINCIPAL_RPST"
+  [ -z "$OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM" ] && _oci_missing_resource_principal_fields="${_oci_missing_resource_principal_fields} OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM"
+  [ -z "$OCI_RESOURCE_PRINCIPAL_REGION" ] && _oci_missing_resource_principal_fields="${_oci_missing_resource_principal_fields} OCI_RESOURCE_PRINCIPAL_REGION"
+
+  if [ "$_oci_missing_resource_principal_fields" ]; then
+    _oci_missing_resource_principal_fields=$(printf "%s" "$_oci_missing_resource_principal_fields" | sed 's/^ //')
+    _err "Error: OCI resource principal authentication is incomplete. Missing: $_oci_missing_resource_principal_fields."
+  fi
 }
 
 _oci_config() {
@@ -312,6 +372,11 @@ _signed_request() {
   _sig_target="$2"
   _sig_body="$3"
   _return_field="$4"
+
+  if [ "$_oci_auth_mode" = "resource_principal" ]; then
+    _err "Error: _oci_auth_mode=resource_principal; resource principal signing is not implemented yet."
+    return 1
+  fi
 
   _key_fingerprint=$(_fingerprint "$OCI_CLI_KEY")
   _sig_host="dns.$OCI_CLI_REGION.oraclecloud.com"
