@@ -125,6 +125,11 @@ _reset_oci_mocks() {
   MOCK_OCI_READINI_USER=""
   MOCK_OCI_READINI_REGION=""
   MOCK_OCI_READINI_KEY_FILE=""
+  unset _H1
+  unset _H2
+  unset _H3
+  unset _H4
+  unset _H5
 
   HOME="$_DNS_OCI_MOCK_DIR/home"
   mkdir -p "$HOME"
@@ -719,6 +724,67 @@ le_test_oci_rp_unsupported_version_reports_env_name() {
     _assert_not_contains "$MOCK_ERROR_LOG" "$_mock_passphrase_file" "unsupported-version error leaked passphrase path" &&
     _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "unsupported-version path must not save RP values" &&
     _assert_not_contains "$MOCK_CLEARED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "unsupported-version path must not clear RP values"
+}
+
+le_test_oci_rp_signs_get_with_st_key_id() {
+  _reset_oci_mocks
+
+  # Restore the real signer for exact header proof, then stub only the lower
+  # HTTP and signing boundaries.
+  # shellcheck disable=SC1091
+  . ./dnsapi/dns_oci.sh
+
+  _get() {
+    _dns_oci_mock_append signed_requests "REAL_GET|$1|$_H1|$_H2"
+    printf '%s' '{}'
+  }
+
+  _sign() {
+    _mock_key_file="$1"
+    _mock_algorithm="$2"
+    _dns_oci_mock_append signing_algorithms "$_mock_algorithm"
+    cat >"$_DNS_OCI_MOCK_DIR/signing_string"
+    cat "$_mock_key_file" >"$_DNS_OCI_MOCK_DIR/signing_key"
+    printf '%s' "TEST_SIGNATURE"
+  }
+
+  _mktemp() {
+    _mock_tmp="$_DNS_OCI_MOCK_DIR/rp-signing-key"
+    : >"$_mock_tmp"
+    printf '%s' "$_mock_tmp"
+  }
+
+  _oci_auth_mode="resource_principal"
+  OCI_RESOURCE_PRINCIPAL_VERSION="2.2"
+  OCI_RESOURCE_PRINCIPAL_RPST="TEST_INLINE_RPST"
+  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM="TEST_INLINE_PRIVATE_PEM"
+  OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
+
+  _assert_success "resource-principal GET should sign with ST keyId" \
+    _signed_request "GET" "/20180115/zones/example.com" "" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _mock_signing_string="$(_dns_oci_mock_read signing_string)"
+  _mock_signing_key="$(_dns_oci_mock_read signing_key)"
+  _install_oci_mock_stubs
+
+  _assert_contains "$MOCK_SIGNED_REQUESTS" "REAL_GET|https://dns.us-ashburn-1.oraclecloud.com/20180115/zones/example.com|date:" "GET did not receive date header" &&
+    _assert_contains "$MOCK_SIGNED_REQUESTS" "Authorization: Signature" "GET did not receive Authorization header" &&
+    _assert_contains "$_H2" "Authorization: Signature" "GET Authorization header missing Signature scheme" &&
+    _assert_contains "$_H2" 'version="1"' "GET Authorization version missing" &&
+    _assert_contains "$_H2" 'keyId="ST$TEST_INLINE_RPST"' "GET Authorization keyId must use ST token shape" &&
+    _assert_contains "$_H2" 'algorithm="rsa-sha256"' "GET Authorization algorithm missing" &&
+    _assert_contains "$_H2" 'headers="(request-target) date host"' "GET signed header list changed" &&
+    _assert_contains "$_H2" 'signature="TEST_SIGNATURE"' "GET signature missing" &&
+    _assert_contains "$_mock_signing_string" "(request-target): get /20180115/zones/example.com" "GET signing string missing request target" &&
+    _assert_contains "$_mock_signing_string" "date:" "GET signing string missing date" &&
+    _assert_contains "$_mock_signing_string" "host: dns.us-ashburn-1.oraclecloud.com" "GET signing string missing RP host" &&
+    _assert_eq "TEST_INLINE_PRIVATE_PEM" "$_mock_signing_key" "GET signer did not write RP private PEM to temp key" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "TEST_INLINE_RPST" "normal logs leaked RPST" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "TEST_INLINE_PRIVATE_PEM" "normal logs leaked private PEM" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" 'ST$TEST_INLINE_RPST' "normal logs leaked ST keyId" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "Authorization:" "normal logs leaked Authorization header" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG" "TEST_SIGNATURE" "normal logs leaked signature"
 }
 
 le_test_oci_auth_api_key() {
