@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# shellcheck disable=SC2034
+# shellcheck disable=SC2034,SC2329
 
 CASE="${1:-${CASE:-}}"
 _DNS_OCI_MOCK_DIR="${TMPDIR:-/tmp}/dns_oci_mock.$$"
