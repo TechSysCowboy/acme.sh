@@ -54,20 +54,21 @@ OCI CLI/API-key users.
 - ✓ Mocked shell-level tests cover zone discovery, TXT payload construction,
   auth selection, and signing-path branching without requiring live OCI DNS
   resources — validated in Phase 1
+- ✓ OCI DNS zone discovery selects the longest matching accessible OCI DNS
+  zone for delegated subzone challenge FQDNs — validated in Phase 2
+- ✓ OCI TXT add/remove payloads use the selected zone and preserve correct
+  `_acme-challenge` behavior for parent, delegated, and wildcard names —
+  validated in Phase 2
+- ✓ Existing OCI CLI config and `OCI_CLI_*` API-key authentication remains the
+  primary path when configured — validated in Phase 3
+- ✓ Resource-principal fallback selection is attempted only after key-based
+  configuration fails, remains process-local, and stops before signing in Phase
+  3 — validated in Phase 3
+- ✓ Missing or incomplete auth configuration distinguishes key-based problems
+  from resource-principal configuration problems — validated in Phase 3
 
 ### Active
 
-- [ ] OCI DNS zone discovery selects the longest matching accessible OCI DNS
-  zone for a challenge FQDN, so `*.x.domain.com` uses `x.domain.com` before
-  falling back to `domain.com`.
-- [ ] OCI TXT add/remove payloads use the record name relative to the selected
-  zone, preserving correct `_acme-challenge` behavior for delegated subzones and
-  wildcard names.
-- [ ] Existing OCI CLI config and `OCI_CLI_*` API-key authentication remain the
-  primary path when configured.
-- [ ] Resource principal authentication is used as a fallback when existing
-  key/config auth is not available and the process is running in an OCI
-  resource-principal environment.
 - [ ] Resource principal request signing avoids persisting ephemeral session
   material in acme.sh account config and keeps tokens, private keys, and
   authorization headers out of normal debug logs.
@@ -142,9 +143,9 @@ OCI hook and any local test harness.
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Use the longest matching accessible OCI DNS zone for delegated subzones | `*.x.domain.com` should target `x.domain.com` when that zone exists and is accessible, not accidentally mutate the parent `domain.com` zone | — Pending |
-| Keep OCI CLI key/config auth first and use resource principal auth as fallback | Preserves current user behavior while enabling keyless OCI-hosted automation | — Pending |
-| Use mocked shell-level tests as the readiness bar | Validates zone discovery and auth branching without requiring live OCI resources or secrets in CI | Validated in Phase 1 |
+| Use the longest matching accessible OCI DNS zone for delegated subzones | `*.x.domain.com` should target `x.domain.com` when that zone exists and is accessible, not accidentally mutate the parent `domain.com` zone | Validated in Phase 2 |
+| Keep OCI CLI key/config auth first and use resource principal auth as fallback | Preserves current user behavior while enabling keyless OCI-hosted automation | Selection boundary validated in Phase 3; RP signing remains Phase 4 |
+| Use mocked shell-level tests as the readiness bar | Validates zone discovery and auth branching without requiring live OCI resources or secrets in CI | Validated through Phase 3 |
 
 ## Evolution
 
@@ -164,4 +165,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-15 after Phase 1 verification*
+*Last updated: 2026-05-15 after Phase 3 verification*
