@@ -26,7 +26,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: OCI Hook Characterization and Test Harness** - Create a local mocked proof harness for the OCI DNS hook.
 - [x] **Phase 2: Delegated Zone Discovery and TXT Payloads** - Implement and prove longest-match zone discovery plus relative TXT payloads. (completed 2026-05-14)
-- [ ] **Phase 3: Authentication Selection Refactor** - Preserve current OCI API-key auth while creating a clean fallback point for resource principal auth.
+- [x] **Phase 3: Authentication Selection Refactor** - Preserve current OCI API-key auth while creating a clean fallback point for resource principal auth. (completed 2026-05-15)
 - [ ] **Phase 4: Resource Principal Signing** - Add secure resource-principal signing for OCI DNS API requests.
 - [ ] **Phase 5: Documentation and Release Verification** - Document behavior, run static checks, and capture final mocked proof.
 
@@ -41,7 +41,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Existing parent-zone behavior is captured before functional changes are made.
   3. Auth branch behavior can be tested without reading real OCI config, tokens, or private keys.
   4. The harness is small, POSIX-shell friendly, and does not introduce a runtime package manager.
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 01-01: Build a minimal OCI hook shell test harness.
@@ -122,6 +122,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 |-------|----------------|--------|-----------|
 | 1. OCI Hook Characterization and Test Harness | 3/3 | Complete | 2026-05-14 |
 | 2. Delegated Zone Discovery and TXT Payloads | 3/3 | Complete    | 2026-05-14 |
-| 3. Authentication Selection Refactor | 0/3 | Not started | - |
+| 3. Authentication Selection Refactor | 3/3 | Complete | 2026-05-15 |
 | 4. Resource Principal Signing | 0/4 | Not started | - |
 | 5. Documentation and Release Verification | 0/3 | Not started | - |
