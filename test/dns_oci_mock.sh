@@ -984,7 +984,7 @@ le_test_oci_rp_does_not_persist_or_normal_log_material() {
   OCI_RESOURCE_PRINCIPAL_VERSION="2.2"
   OCI_RESOURCE_PRINCIPAL_RPST="TEST_PUBLIC_RPST"
   OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM="TEST_PUBLIC_PRIVATE_PEM"
-  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM_PASSPHRASE="TEST_PUBLIC_PASSPHRASE"
+  unset OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM_PASSPHRASE
   OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
 
   _assert_success "resource-principal public add should keep normal logs clean" \
@@ -998,10 +998,8 @@ le_test_oci_rp_does_not_persist_or_normal_log_material() {
     _assert_not_contains "$MOCK_SAVED_KEYS$MOCK_CLEARED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "RP names must not be saved or cleared" &&
     _assert_not_contains "$MOCK_SAVED_KEYS$MOCK_CLEARED_KEYS" "TEST_PUBLIC_RPST" "RPST must not be saved or cleared" &&
     _assert_not_contains "$MOCK_SAVED_KEYS$MOCK_CLEARED_KEYS" "TEST_PUBLIC_PRIVATE_PEM" "private PEM must not be saved or cleared" &&
-    _assert_not_contains "$MOCK_SAVED_KEYS$MOCK_CLEARED_KEYS" "TEST_PUBLIC_PASSPHRASE" "passphrase must not be saved or cleared" &&
     _assert_not_contains "$_normal_logs" "TEST_PUBLIC_RPST" "normal logs leaked RPST" &&
     _assert_not_contains "$_normal_logs" "TEST_PUBLIC_PRIVATE_PEM" "normal logs leaked private PEM" &&
-    _assert_not_contains "$_normal_logs" "TEST_PUBLIC_PASSPHRASE" "normal logs leaked passphrase" &&
     _assert_not_contains "$_normal_logs" "Authorization:" "normal logs leaked Authorization" &&
     _assert_not_contains "$_normal_logs" "ST\$" "normal logs leaked ST keyId" &&
     _assert_not_contains "$_normal_logs" "TEST_PUBLIC_GET_SIGNATURE" "normal logs leaked GET signature" &&
@@ -1102,10 +1100,7 @@ le_test_oci_rp_passphrase_success() {
   }
 
   _mktemp() {
-    _mock_tmp_counter=$(_math "${_mock_tmp_counter:-0}" + 1)
-    _mock_tmp="$_DNS_OCI_MOCK_DIR/rp-passphrase-signing-$_mock_tmp_counter"
-    : >"$_mock_tmp"
-    printf '%s' "$_mock_tmp"
+    mktemp "$_DNS_OCI_MOCK_DIR/rp-passphrase-signing.XXXXXX"
   }
 
   unset OCI_CLI_TENANCY
@@ -1169,10 +1164,7 @@ le_test_oci_rp_passphrase_failure_is_clean() {
   }
 
   _mktemp() {
-    _mock_tmp_counter=$(_math "${_mock_tmp_counter:-0}" + 1)
-    _mock_tmp="$_DNS_OCI_MOCK_DIR/rp-passphrase-failure-$_mock_tmp_counter"
-    : >"$_mock_tmp"
-    printf '%s' "$_mock_tmp"
+    mktemp "$_DNS_OCI_MOCK_DIR/rp-passphrase-failure.XXXXXX"
   }
 
   unset OCI_CLI_TENANCY

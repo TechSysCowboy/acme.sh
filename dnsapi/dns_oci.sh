@@ -564,15 +564,22 @@ _signed_request_resource_principal() {
   fi
 
   _tmp_file=$(_mktemp)
+  _sign_status=1
   if [ -f "$_tmp_file" ]; then
     printf '%s' "$_oci_rp_private_pem" >"$_tmp_file"
-    _signature=$(printf '%b' "$_string_to_sign" | _sign "$_tmp_file" sha256 | tr -d '\r\n')
+    _signature=$(printf '%b' "$_string_to_sign" | _oci_sign_with_private_key_file "$_tmp_file" sha256)
+    _sign_status="$?"
+    _signature=$(printf '%s' "$_signature" | tr -d '\r\n')
     rm -f "$_tmp_file"
   fi
 
-  if [ -z "$_signature" ]; then
+  if [ "$_sign_status" != "0" ] || [ -z "$_signature" ]; then
     _oci_resource_principal_auth_error=1
-    _err "Error: OCI resource principal signing failed."
+    if [ "$_oci_rp_private_pem_passphrase" ]; then
+      _err "Error: OCI resource principal signing failed for OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM_PASSPHRASE."
+    else
+      _err "Error: OCI resource principal signing failed."
+    fi
     _oci_reset_resource_principal_material
     return 1
   fi
@@ -609,6 +616,48 @@ _signed_request_resource_principal() {
   _oci_reset_resource_principal_material
   printf "%s" "$_return"
   return $_ret
+}
+
+_oci_sign_with_private_key_file() {
+  _oci_sign_key_file="$1"
+  _oci_sign_alg="$2"
+
+  if [ -z "$_oci_rp_private_pem_passphrase" ]; then
+    _sign "$_oci_sign_key_file" "$_oci_sign_alg"
+    return $?
+  fi
+
+  _oci_passphrase_file=$(_mktemp)
+  if [ ! -f "$_oci_passphrase_file" ]; then
+    return 1
+  fi
+
+  printf '%s' "$_oci_rp_private_pem_passphrase" >"$_oci_passphrase_file"
+  _oci_openssl_sign_with_passphrase "$_oci_sign_key_file" "$_oci_sign_alg" "$_oci_passphrase_file"
+  _oci_sign_status="$?"
+  rm -f "$_oci_passphrase_file"
+  return "$_oci_sign_status"
+}
+
+_oci_openssl_sign_with_passphrase() {
+  _oci_sign_key_file="$1"
+  _oci_sign_alg="$2"
+  _oci_passphrase_file="$3"
+  _oci_signature_file=$(_mktemp)
+
+  if [ ! -f "$_oci_signature_file" ]; then
+    return 1
+  fi
+
+  if ${ACME_OPENSSL_BIN:-openssl} dgst "-$_oci_sign_alg" -sign "$_oci_sign_key_file" -passin "file:$_oci_passphrase_file" >"$_oci_signature_file" 2>/dev/null; then
+    _base64 <"$_oci_signature_file"
+    _oci_sign_status=0
+  else
+    _oci_sign_status=1
+  fi
+
+  rm -f "$_oci_signature_file"
+  return "$_oci_sign_status"
 }
 
 # file  key  [section]
