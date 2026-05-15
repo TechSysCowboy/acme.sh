@@ -1066,6 +1066,142 @@ le_test_oci_rp_signing_failure_stops_zone_fallback() {
     _assert_not_contains "$MOCK_ERROR_LOG$MOCK_DEBUG_LOG$MOCK_INFO_LOG" "Authorization:" "signing failure logs leaked Authorization"
 }
 
+le_test_oci_rp_passphrase_success() {
+  _reset_oci_mocks
+
+  # shellcheck disable=SC1091
+  . ./dnsapi/dns_oci.sh
+
+  _get() {
+    _dns_oci_mock_append signed_requests "GET|$1|$_H2"
+    printf '%s' '{"id":"ocid1.dns-zone.oc1..example"}'
+  }
+
+  _post() {
+    _dns_oci_mock_append signed_requests "PATCH|$2|$_H5|$1"
+    printf '%s' '{}'
+  }
+
+  _sign() {
+    _dns_oci_mock_append passphrase_failures "plain-sign-used"
+    return 1
+  }
+
+  _oci_openssl_sign_with_passphrase() {
+    _mock_key_file="$1"
+    _mock_algorithm="$2"
+    _mock_passphrase_file="$3"
+    _dns_oci_mock_append passphrase_paths "$_mock_passphrase_file"
+    _dns_oci_mock_append passphrase_values "$(cat "$_mock_passphrase_file")"
+    _dns_oci_mock_append passphrase_algorithms "$_mock_algorithm"
+    cat "$_mock_key_file" >"$_DNS_OCI_MOCK_DIR/passphrase_key"
+    case "$_mock_key_file $_mock_algorithm $_mock_passphrase_file" in
+    *TEST_INLINE_PASSPHRASE*) _dns_oci_mock_append passphrase_failures "passphrase leaked through argv" ;;
+    esac
+    printf '%s' "TEST_PASSPHRASE_SIGNATURE"
+  }
+
+  _mktemp() {
+    _mock_tmp_counter=$(_math "${_mock_tmp_counter:-0}" + 1)
+    _mock_tmp="$_DNS_OCI_MOCK_DIR/rp-passphrase-signing-$_mock_tmp_counter"
+    : >"$_mock_tmp"
+    printf '%s' "$_mock_tmp"
+  }
+
+  unset OCI_CLI_TENANCY
+  unset OCI_CLI_USER
+  unset OCI_CLI_REGION
+  unset OCI_CLI_KEY
+  unset OCI_CLI_KEY_FILE
+  OCI_RESOURCE_PRINCIPAL_VERSION="2.2"
+  OCI_RESOURCE_PRINCIPAL_RPST="TEST_PASSPHRASE_RPST"
+  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM="TEST_PASSPHRASE_PRIVATE_PEM"
+  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM_PASSPHRASE="TEST_INLINE_PASSPHRASE"
+  OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
+
+  _assert_success "passphrase-backed RP signing should reach PATCH" \
+    dns_oci_add "example.com" "passphrase-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _mock_passphrase_paths="$(_dns_oci_mock_read passphrase_paths)"
+  _mock_passphrase_values="$(_dns_oci_mock_read passphrase_values)"
+  _mock_passphrase_failures="$(_dns_oci_mock_read passphrase_failures)"
+  _mock_passphrase_key="$(_dns_oci_mock_read passphrase_key)"
+  _install_oci_mock_stubs
+  _normal_logs="$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG"
+
+  _assert_contains "$MOCK_SIGNED_REQUESTS" "PATCH|" "passphrase success should reach PATCH" &&
+    _assert_contains "$MOCK_SIGNED_REQUESTS" 'signature="TEST_PASSPHRASE_SIGNATURE"' "passphrase signature missing" &&
+    _assert_contains "$_mock_passphrase_values" "TEST_INLINE_PASSPHRASE" "passphrase helper did not receive passphrase file content" &&
+    _assert_eq "" "$_mock_passphrase_failures" "passphrase helper leaked or fell back to plain signing" &&
+    _assert_eq "TEST_PASSPHRASE_PRIVATE_PEM" "$_mock_passphrase_key" "passphrase helper did not receive RP private PEM" &&
+    _assert_not_contains "$_mock_passphrase_paths" "TEST_INLINE_PASSPHRASE" "passphrase value leaked through helper path" &&
+    _assert_not_contains "$_normal_logs" "TEST_INLINE_PASSPHRASE" "normal logs leaked passphrase" &&
+    _assert_not_contains "$MOCK_SECURE_DEBUG_LOG" "TEST_INLINE_PASSPHRASE" "secure debug leaked passphrase"
+}
+
+le_test_oci_rp_passphrase_failure_is_clean() {
+  _reset_oci_mocks
+
+  # shellcheck disable=SC1091
+  . ./dnsapi/dns_oci.sh
+
+  _get() {
+    _dns_oci_mock_append signed_requests "GET|$1|$_H2"
+    printf '%s' '{"id":"ocid1.dns-zone.oc1..example"}'
+  }
+
+  _post() {
+    _dns_oci_mock_append signed_requests "PATCH|$2|$_H5|$1"
+    printf '%s' '{}'
+  }
+
+  _sign() {
+    _dns_oci_mock_append passphrase_failures "plain-sign-used"
+    return 1
+  }
+
+  _oci_openssl_sign_with_passphrase() {
+    _mock_passphrase_file="$3"
+    _dns_oci_mock_append passphrase_paths "$_mock_passphrase_file"
+    _dns_oci_mock_append passphrase_values "$(cat "$_mock_passphrase_file")"
+    return 1
+  }
+
+  _mktemp() {
+    _mock_tmp_counter=$(_math "${_mock_tmp_counter:-0}" + 1)
+    _mock_tmp="$_DNS_OCI_MOCK_DIR/rp-passphrase-failure-$_mock_tmp_counter"
+    : >"$_mock_tmp"
+    printf '%s' "$_mock_tmp"
+  }
+
+  unset OCI_CLI_TENANCY
+  unset OCI_CLI_USER
+  unset OCI_CLI_REGION
+  unset OCI_CLI_KEY
+  unset OCI_CLI_KEY_FILE
+  OCI_RESOURCE_PRINCIPAL_VERSION="2.2"
+  OCI_RESOURCE_PRINCIPAL_RPST="TEST_PASSPHRASE_FAIL_RPST"
+  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM="TEST_PASSPHRASE_FAIL_PRIVATE_PEM"
+  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM_PASSPHRASE="TEST_INLINE_PASSPHRASE"
+  OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
+
+  _assert_failure "passphrase signing failure should fail before PATCH" \
+    dns_oci_add "example.com" "passphrase-failure-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _mock_passphrase_paths="$(_dns_oci_mock_read passphrase_paths)"
+  _install_oci_mock_stubs
+  _normal_logs="$MOCK_DEBUG_LOG$MOCK_INFO_LOG$MOCK_ERROR_LOG"
+
+  _assert_contains "$MOCK_ERROR_LOG" "OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM_PASSPHRASE" "passphrase failure should name env var" &&
+    _assert_contains "$MOCK_ERROR_LOG" "signing failed" "passphrase failure class missing" &&
+    _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|" "passphrase failure must not reach PATCH" &&
+    _assert_not_contains "$_normal_logs" "TEST_INLINE_PASSPHRASE" "normal logs leaked failing passphrase" &&
+    _assert_not_contains "$MOCK_SECURE_DEBUG_LOG" "TEST_INLINE_PASSPHRASE" "secure debug leaked failing passphrase" &&
+    _assert_not_contains "$_normal_logs$MOCK_SECURE_DEBUG_LOG" "$_mock_passphrase_paths" "logs leaked passphrase path"
+}
+
 le_test_oci_auth_api_key() {
   _reset_oci_mocks
   MOCK_OCI_ZONES="example.com"
