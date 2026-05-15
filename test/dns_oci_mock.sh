@@ -656,6 +656,71 @@ le_test_oci_rp_loads_path_material() {
     _assert_eq "" "$_oci_rp_private_pem_passphrase" "reset should blank path passphrase"
 }
 
+le_test_oci_rp_missing_material_reports_env_names() {
+  _reset_oci_mocks
+  unset OCI_CLI_TENANCY
+  unset OCI_CLI_USER
+  unset OCI_CLI_REGION
+  unset OCI_CLI_KEY
+  unset OCI_CLI_KEY_FILE
+  OCI_RESOURCE_PRINCIPAL_VERSION="2.2"
+  OCI_RESOURCE_PRINCIPAL_RPST="TEST_MISSING_RPST"
+  unset OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM
+  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM_PASSPHRASE="TEST_MISSING_PASSPHRASE"
+  OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
+
+  _assert_failure "missing resource principal material should fail" \
+    _oci_load_resource_principal_material || return 1
+
+  _dns_oci_mock_refresh_captures
+  _assert_contains "$MOCK_ERROR_LOG" "OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM" "missing private PEM env name absent" &&
+    _assert_contains "$MOCK_ERROR_LOG" "missing" "missing failure class absent" &&
+    _assert_not_contains "$MOCK_ERROR_LOG" "TEST_MISSING_RPST" "missing-material error leaked RPST" &&
+    _assert_not_contains "$MOCK_ERROR_LOG" "TEST_MISSING_PASSPHRASE" "missing-material error leaked passphrase" &&
+    _assert_not_contains "$MOCK_ERROR_LOG" "us-ashburn-1" "missing-material error leaked region value" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "missing-material path must not save RP values" &&
+    _assert_not_contains "$MOCK_CLEARED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "missing-material path must not clear RP values" &&
+    _assert_eq "" "$_oci_rp_rpst" "missing-material failure should reset RPST" &&
+    _assert_eq "" "$_oci_rp_private_pem" "missing-material failure should reset private PEM" &&
+    _assert_eq "" "$_oci_rp_private_pem_passphrase" "missing-material failure should reset passphrase"
+}
+
+le_test_oci_rp_unsupported_version_reports_env_name() {
+  _reset_oci_mocks
+  unset OCI_CLI_TENANCY
+  unset OCI_CLI_USER
+  unset OCI_CLI_REGION
+  unset OCI_CLI_KEY
+  unset OCI_CLI_KEY_FILE
+  _mock_rpst_file="$_DNS_OCI_MOCK_DIR/version-rpst.token"
+  _mock_private_pem_file="$_DNS_OCI_MOCK_DIR/version-private.pem"
+  _mock_passphrase_file="$_DNS_OCI_MOCK_DIR/version-passphrase.txt"
+  printf '%s' "TEST_VERSION_RPST" >"$_mock_rpst_file"
+  printf '%s' "TEST_VERSION_PRIVATE_PEM" >"$_mock_private_pem_file"
+  printf '%s' "TEST_VERSION_PASSPHRASE" >"$_mock_passphrase_file"
+  OCI_RESOURCE_PRINCIPAL_VERSION="3.0"
+  OCI_RESOURCE_PRINCIPAL_RPST="$_mock_rpst_file"
+  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM="$_mock_private_pem_file"
+  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM_PASSPHRASE="$_mock_passphrase_file"
+  OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
+
+  _assert_failure "unsupported resource principal version should fail" \
+    _oci_load_resource_principal_material || return 1
+
+  _dns_oci_mock_refresh_captures
+  _assert_contains "$MOCK_ERROR_LOG" "OCI_RESOURCE_PRINCIPAL_VERSION=2.2" "unsupported-version env contract absent" &&
+    _assert_contains "$MOCK_ERROR_LOG" "unsupported" "unsupported-version failure class absent" &&
+    _assert_not_contains "$MOCK_ERROR_LOG" "3.0" "unsupported-version error leaked version value" &&
+    _assert_not_contains "$MOCK_ERROR_LOG" "TEST_VERSION_RPST" "unsupported-version error leaked RPST" &&
+    _assert_not_contains "$MOCK_ERROR_LOG" "TEST_VERSION_PRIVATE_PEM" "unsupported-version error leaked private PEM" &&
+    _assert_not_contains "$MOCK_ERROR_LOG" "TEST_VERSION_PASSPHRASE" "unsupported-version error leaked passphrase" &&
+    _assert_not_contains "$MOCK_ERROR_LOG" "$_mock_rpst_file" "unsupported-version error leaked RPST path" &&
+    _assert_not_contains "$MOCK_ERROR_LOG" "$_mock_private_pem_file" "unsupported-version error leaked private PEM path" &&
+    _assert_not_contains "$MOCK_ERROR_LOG" "$_mock_passphrase_file" "unsupported-version error leaked passphrase path" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "unsupported-version path must not save RP values" &&
+    _assert_not_contains "$MOCK_CLEARED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "unsupported-version path must not clear RP values"
+}
+
 le_test_oci_auth_api_key() {
   _reset_oci_mocks
   MOCK_OCI_ZONES="example.com"
