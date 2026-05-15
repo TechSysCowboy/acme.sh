@@ -19,9 +19,9 @@
 
 ### Authentication Selection
 
-- [ ] **AUTH-01**: Existing OCI CLI config and `OCI_CLI_*` API-key authentication remains the primary path when complete key-based configuration is present.
-- [ ] **AUTH-02**: Resource principal authentication is attempted only when key-based OCI authentication is unavailable and resource principal environment configuration is present.
-- [ ] **AUTH-03**: Missing or incomplete authentication configuration fails with messages that distinguish key-based configuration problems from resource principal configuration problems.
+- [x] **AUTH-01**: Existing OCI CLI config and `OCI_CLI_*` API-key authentication remains the primary path when complete key-based configuration is present.
+- [x] **AUTH-02**: Resource principal authentication is attempted only when key-based OCI authentication is unavailable and resource principal environment configuration is present.
+- [x] **AUTH-03**: Missing or incomplete authentication configuration fails with messages that distinguish key-based configuration problems from resource principal configuration problems.
 
 ### Resource Principal Signing
 
@@ -74,9 +74,9 @@ Deferred to future release. Tracked but not in the current roadmap.
 | TXT-01 | Phase 2 | Complete |
 | TXT-02 | Phase 2 | Complete |
 | TXT-03 | Phase 2 | Complete |
-| AUTH-01 | Phase 3 | Pending |
-| AUTH-02 | Phase 3 | Pending |
-| AUTH-03 | Phase 3 | Pending |
+| AUTH-01 | Phase 3 | Complete |
+| AUTH-02 | Phase 3 | Complete |
+| AUTH-03 | Phase 3 | Complete |
 | RP-01 | Phase 4 | Pending |
 | RP-02 | Phase 4 | Pending |
 | RP-03 | Phase 4 | Pending |
