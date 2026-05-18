@@ -606,7 +606,7 @@ le_test_oci_provider_metadata_documents_current_behavior() {
 
   _assert_contains "$dns_oci_info" "API-key" "metadata must document API-key auth" &&
     _assert_contains "$dns_oci_info" "resource principal" "metadata must document resource principal auth" &&
-    _assert_contains "$dns_oci_info" "fallback" "metadata must document resource principal fallback" &&
+    _assert_contains "$dns_oci_info" "selected automatically" "metadata must document resource principal selection" &&
     _assert_contains "$dns_oci_info" "delegated" "metadata must document delegated zone behavior" &&
     _assert_contains "$dns_oci_info" "subzone" "metadata must document subzone behavior" &&
     _assert_contains "$dns_oci_info" "OCI_RESOURCE_PRINCIPAL_VERSION" "metadata must list RP version env" &&
@@ -1288,7 +1288,8 @@ le_test_oci_auth_resource_principal_current_state() {
     dns_oci_add "_acme-challenge.www.example.com" "rp-current-state-value" || return 1
 
   _dns_oci_mock_refresh_captures
-  _assert_contains "$MOCK_ERROR_LOG" "unable to read OCI_CLI_TENANCY" "current-state missing tenancy error absent" &&
+  _assert_contains "$MOCK_ERROR_LOG" "_oci_auth_mode=resource_principal" "resource-principal version did not select RP mode" &&
+    _assert_not_contains "$MOCK_ERROR_LOG" "unable to read OCI_CLI_TENANCY" "resource-principal version must not require API-key tenancy" &&
     _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/" "resource-principal current state must not PATCH" &&
     _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_RESOURCE_PRINCIPAL_RPST" "RPST path must not be saved" &&
     _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM" "resource principal private key path must not be saved"
@@ -1317,7 +1318,7 @@ le_test_oci_auth_resource_principal_detected_boundary() {
     _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/" "resource-principal boundary must not PATCH"
 }
 
-le_test_oci_auth_partial_key_falls_back_to_resource_principal() {
+le_test_oci_auth_resource_principal_version_ignores_partial_api_key() {
   _reset_oci_mocks
   MOCK_OCI_ZONES="example.com"
   OCI_CLI_TENANCY="ocid1.tenancy.oc1..partial"
@@ -1330,32 +1331,33 @@ le_test_oci_auth_partial_key_falls_back_to_resource_principal() {
   OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM="/tmp/nonexistent-private.pem"
   OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
 
-  _assert_failure "partial API-key config should fall back to RP signing failure" \
+  _assert_failure "OCI_RESOURCE_PRINCIPAL_VERSION=2.2 should ignore partial API-key config" \
     dns_oci_add "_acme-challenge.www.example.com" "rp-partial-key-value" || return 1
 
   _dns_oci_mock_refresh_captures
-  _assert_contains "$MOCK_ERROR_LOG" "OCI_CLI_USER" "partial-key diagnostic should name missing user" &&
-    _assert_contains "$MOCK_ERROR_LOG" "OCI_CLI_KEY" "partial-key diagnostic should name missing key material" &&
-    _assert_contains "$MOCK_ERROR_LOG" "_oci_auth_mode=resource_principal" "partial-key fallback did not select RP mode" &&
-    _assert_contains "$MOCK_ERROR_LOG" "signing failed" "partial-key fallback did not report RP signing failure" &&
+  _assert_contains "$MOCK_ERROR_LOG" "_oci_auth_mode=resource_principal" "RP version did not select RP mode with partial API-key config" &&
+    _assert_contains "$MOCK_ERROR_LOG" "signing failed" "RP-selected path did not report signing failure" &&
+    _assert_not_contains "$MOCK_ERROR_LOG" "OCI_CLI_USER" "RP-selected path must not report partial API-key user" &&
+    _assert_not_contains "$MOCK_ERROR_LOG" "OCI_CLI_KEY" "RP-selected path must not report partial API-key material" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_CLI_TENANCY" "partial API-key tenancy must not be persisted when RP is selected" &&
     _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "resource principal values must not be persisted" &&
-    _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/" "partial-key RP boundary must not PATCH"
+    _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/" "RP-selected boundary must not PATCH"
 }
 
-le_test_oci_auth_api_key_wins_over_resource_principal() {
+le_test_oci_auth_api_key_wins_when_resource_principal_version_unsupported() {
   _reset_oci_mocks
   MOCK_OCI_ZONES="example.com"
-  OCI_RESOURCE_PRINCIPAL_VERSION="2.2"
+  OCI_RESOURCE_PRINCIPAL_VERSION="3.0"
   OCI_RESOURCE_PRINCIPAL_RPST="/tmp/rpst.token"
   OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM="/tmp/private.pem"
   OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
 
-  _assert_success "complete API-key config should win over complete RP env" \
+  _assert_success "complete API-key config should win when RP version is unsupported" \
     dns_oci_add "_acme-challenge.www.example.com" "api-key-wins-value" || return 1
 
   _dns_oci_mock_refresh_captures
   _assert_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/example.com/records|" "API-key-wins path did not reach PATCH" &&
-    _assert_eq "api_key" "$_oci_auth_mode" "API-key config should select api_key mode" &&
+    _assert_eq "api_key" "$_oci_auth_mode" "unsupported RP version should allow api_key mode" &&
     _assert_contains "$MOCK_SAVED_KEYS" "OCI_CLI_TENANCY=ocid1.tenancy.oc1..test" "tenancy was not persisted" &&
     _assert_contains "$MOCK_SAVED_KEYS" "OCI_CLI_USER=ocid1.user.oc1..test" "user was not persisted" &&
     _assert_contains "$MOCK_SAVED_KEYS" "OCI_CLI_REGION=us-ashburn-1" "region was not persisted" &&
@@ -1364,6 +1366,26 @@ le_test_oci_auth_api_key_wins_over_resource_principal() {
     _assert_not_contains "$MOCK_CLEARED_KEYS" "OCI_RESOURCE_PRINCIPAL" "RP values must not be cleared when API-key wins" &&
     _assert_not_contains "$MOCK_DEBUG_LOG" "OCI_RESOURCE_PRINCIPAL" "normal debug must not mention RP when API-key wins" &&
     _assert_not_contains "$MOCK_INFO_LOG" "OCI_RESOURCE_PRINCIPAL" "normal info must not mention RP when API-key wins"
+}
+
+le_test_oci_auth_resource_principal_version_wins_over_api_key() {
+  _reset_oci_mocks
+  MOCK_OCI_ZONES="example.com"
+  OCI_RESOURCE_PRINCIPAL_VERSION="2.2"
+  unset OCI_RESOURCE_PRINCIPAL_RPST
+  unset OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM
+  unset OCI_RESOURCE_PRINCIPAL_REGION
+
+  _assert_failure "OCI_RESOURCE_PRINCIPAL_VERSION=2.2 should select RP before API-key auth" \
+    dns_oci_add "_acme-challenge.www.example.com" "rp-version-wins-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _assert_contains "$MOCK_ERROR_LOG" "_oci_auth_mode=resource_principal" "RP version did not select resource-principal mode" &&
+    _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/" "RP-selected path must not PATCH through API-key auth" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_CLI_TENANCY" "RP-selected path must not persist API-key tenancy" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_CLI_USER" "RP-selected path must not persist API-key user" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_CLI_REGION" "RP-selected path must not persist API-key region" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_CLI_KEY" "RP-selected path must not persist API-key material"
 }
 
 le_test_oci_auth_oci_cli_config_file_primary() {
@@ -1468,7 +1490,7 @@ le_test_oci_auth_resource_principal_does_not_persist() {
     _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/" "RP no-persist boundary must not PATCH"
 }
 
-le_test_oci_auth_saved_config_survives_resource_principal_fallback() {
+le_test_oci_auth_resource_principal_version_does_not_mutate_saved_api_key_config() {
   _reset_oci_mocks
   MOCK_OCI_ZONES="example.com"
   _mock_saved_config="$_DNS_OCI_MOCK_DIR/saved-oci-config"
@@ -1486,15 +1508,18 @@ le_test_oci_auth_saved_config_survives_resource_principal_fallback() {
   OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM="/tmp/private.pem"
   OCI_RESOURCE_PRINCIPAL_REGION="us-ashburn-1"
 
-  _assert_failure "saved API-key config should survive RP fallback" \
+  _assert_failure "RP selection should not mutate saved API-key config" \
     dns_oci_add "_acme-challenge.www.example.com" "rp-saved-config-value" || return 1
 
   _dns_oci_mock_refresh_captures
-  _assert_contains "$MOCK_ERROR_LOG" "_oci_auth_mode=resource_principal" "saved-config fallback should select RP mode" &&
-    _assert_contains "$MOCK_SAVED_KEYS" "OCI_CLI_CONFIG_FILE=$_mock_saved_config" "saved config path should remain saved" &&
-    _assert_contains "$MOCK_SAVED_KEYS" "OCI_CLI_TENANCY=ocid1.tenancy.oc1..saved" "saved tenancy should remain saved" &&
-    _assert_not_contains "$MOCK_CLEARED_KEYS" "OCI_CLI_CONFIG_FILE" "saved config path must not be cleared" &&
-    _assert_not_contains "$MOCK_CLEARED_KEYS" "OCI_CLI_TENANCY" "saved tenancy must not be cleared" &&
+  _assert_contains "$MOCK_ERROR_LOG" "_oci_auth_mode=resource_principal" "saved-config case should select RP mode" &&
+    _assert_eq "" "$MOCK_READINI_KEYS" "RP-selected path must not read OCI CLI config" &&
+    _assert_not_contains "$MOCK_DEBUG_LOG" "Reading OCI_CLI_" "RP-selected path must not debug-log OCI CLI config reads" &&
+    _assert_not_contains "$MOCK_ERROR_LOG" "OCI API-key authentication is incomplete" "RP-selected path must not report API-key auth diagnostics" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_CLI_CONFIG_FILE" "RP-selected path must not save API-key config path" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_CLI_TENANCY" "RP-selected path must not save API-key tenancy" &&
+    _assert_not_contains "$MOCK_CLEARED_KEYS" "OCI_CLI_CONFIG_FILE" "RP-selected path must not clear API-key config path" &&
+    _assert_not_contains "$MOCK_CLEARED_KEYS" "OCI_CLI_TENANCY" "RP-selected path must not clear API-key tenancy" &&
     _assert_not_contains "$MOCK_SAVED_KEYS" "OCI_RESOURCE_PRINCIPAL_" "RP variable names must not be saved" &&
     _assert_not_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/" "saved-config RP fallback must not PATCH"
 }

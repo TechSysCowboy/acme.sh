@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 # shellcheck disable=SC2034
 dns_oci_info='Oracle Cloud Infrastructure (OCI)
- API-key auth from OCI CLI config or OCI_CLI_* values is primary.
- Resource principal auth is a fallback when API-key auth is incomplete and OCI_RESOURCE_PRINCIPAL_VERSION=2.2 values are complete.
+ Resource principal auth is selected automatically when OCI_RESOURCE_PRINCIPAL_VERSION=2.2.
+ API-key auth from OCI CLI config or OCI_CLI_* values is used otherwise.
  delegated subzones are supported by selecting the most-specific accessible zone.
  DNS policy must allow zone read and TXT record write, for example "read dns-zones" and "use dns-records".
 Site: cloud.oracle.com
@@ -13,7 +13,7 @@ Options:
  OCI_CLI_REGION Should point to the tenancy home region. Optional.
  OCI_CLI_KEY_FILE Path to private API signing key file in PEM format. Optional.
  OCI_CLI_KEY The private API signing key in PEM format. Optional.
- OCI_RESOURCE_PRINCIPAL_VERSION Must be 2.2 for resource principal fallback. Optional.
+ OCI_RESOURCE_PRINCIPAL_VERSION Must be 2.2 for resource principal auth. Optional.
  OCI_RESOURCE_PRINCIPAL_RPST Path to RPST file or inline RPST value. Optional.
  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM Path to private PEM file or inline PEM value. Optional.
  OCI_RESOURCE_PRINCIPAL_REGION Region for resource principal DNS requests. Optional.
@@ -24,20 +24,20 @@ Issues: github.com/acmesh-official/acme.sh/issues/3540
 # Copyright (c) 2021, Oracle and/or its affiliates
 # Copyright (c) 2026, Avi Miller <me@dje.li>
 #
-# The plugin will automatically use the default profile from an OCI SDK and CLI
-# configuration file, if it exists.
+# API-key auth will automatically use the default profile from an OCI SDK and
+# CLI configuration file, if it exists.
 #
 # Alternatively, set the following environment variables:
 # - OCI_CLI_TENANCY : OCID of tenancy that contains the target DNS zone
 # - OCI_CLI_USER    : OCID of user with permission to add/remove records from zones
 # - OCI_CLI_REGION  : Should point to the tenancy home region
 #
-# One of the following two variables is required:
+# For API-key auth, one of the following two variables is required:
 # - OCI_CLI_KEY_FILE: Path to private API signing key file in PEM format; or
 # - OCI_CLI_KEY     : The private API signing key in PEM format
 #
-# Resource principal fallback supports OCI_RESOURCE_PRINCIPAL_VERSION=2.2 with
-# RPST, private PEM, region, and optional private PEM passphrase values.
+# Resource principal auth is selected when OCI_RESOURCE_PRINCIPAL_VERSION=2.2,
+# using the configured RPST, private PEM, region, and optional passphrase.
 #
 
 dns_oci_add() {
@@ -122,17 +122,17 @@ _get_oci_zone() {
 _oci_select_auth() {
   _oci_auth_mode=""
 
+  if _oci_resource_principal_requested; then
+    _oci_auth_mode="resource_principal"
+    return 0
+  fi
+
   if _oci_config; then
     _oci_auth_mode="api_key"
     return 0
   fi
 
   _oci_report_api_key_auth_missing
-
-  if _oci_resource_principal_configured; then
-    _oci_auth_mode="resource_principal"
-    return 0
-  fi
 
   _oci_report_resource_principal_auth_missing
   return 1
@@ -154,13 +154,8 @@ _oci_report_api_key_auth_missing() {
   fi
 }
 
-_oci_resource_principal_configured() {
-  [ "$OCI_RESOURCE_PRINCIPAL_VERSION" = "2.2" ] || return 1
-  [ "$OCI_RESOURCE_PRINCIPAL_RPST" ] || return 1
-  [ "$OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM" ] || return 1
-  [ "$OCI_RESOURCE_PRINCIPAL_REGION" ] || return 1
-
-  return 0
+_oci_resource_principal_requested() {
+  [ "$OCI_RESOURCE_PRINCIPAL_VERSION" = "2.2" ]
 }
 
 _oci_report_resource_principal_auth_missing() {
