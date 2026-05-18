@@ -3,6 +3,7 @@
 dns_oci_info='Oracle Cloud Infrastructure (OCI)
  API-key auth from OCI CLI config or OCI_CLI_* values is primary.
  Resource principal auth is a fallback when API-key auth is incomplete and OCI_RESOURCE_PRINCIPAL_VERSION=2.2 values are complete.
+ delegated subzones are supported by selecting the most-specific accessible zone.
  DNS policy must allow zone read and TXT record write, for example "read dns-zones" and "use dns-records".
 Site: cloud.oracle.com
 Docs: github.com/acmesh-official/acme.sh/wiki/How-to-use-Oracle-Cloud-Infrastructure-DNS
@@ -183,6 +184,19 @@ _oci_reset_resource_principal_material() {
   _oci_rp_region=""
 }
 
+_oci_strip_quotes() {
+  printf "%s" "$1" | sed "s/^[\"']//; s/[\"']$//"
+}
+
+_oci_normalize_path() {
+  _oci_path=$(_oci_strip_quotes "$1")
+
+  case "$_oci_path" in
+  [~]/*) printf "%s/%s" "$HOME" "${_oci_path#??}" ;;
+  *) printf "%s" "$_oci_path" ;;
+  esac
+}
+
 _oci_read_resource_principal_value() {
   _oci_rp_env_name="$1"
   _oci_rp_required="${2:-}"
@@ -244,10 +258,29 @@ _oci_load_resource_principal_material() {
 _oci_config() {
 
   _DEFAULT_OCI_CLI_CONFIG_FILE="$HOME/.oci/config"
-  OCI_CLI_CONFIG_FILE="${OCI_CLI_CONFIG_FILE:-$(_readaccountconf_mutable OCI_CLI_CONFIG_FILE)}"
+  _oci_saved_config_file="$(_readaccountconf_mutable OCI_CLI_CONFIG_FILE)"
+  _oci_config_file_from_saved=""
+  if [ -z "$OCI_CLI_CONFIG_FILE" ] && [ "$_oci_saved_config_file" ]; then
+    OCI_CLI_CONFIG_FILE="$(_oci_normalize_path "$_oci_saved_config_file")"
+    _oci_config_file_from_saved=1
+  elif [ "$OCI_CLI_CONFIG_FILE" ]; then
+    OCI_CLI_CONFIG_FILE="$(_oci_normalize_path "$OCI_CLI_CONFIG_FILE")"
+  fi
 
   if [ -z "$OCI_CLI_CONFIG_FILE" ]; then
     OCI_CLI_CONFIG_FILE="$_DEFAULT_OCI_CLI_CONFIG_FILE"
+  fi
+
+  _oci_ignore_saved_api_key_config=""
+  if [ "$_oci_config_file_from_saved" ] && [ ! -f "$OCI_CLI_CONFIG_FILE" ]; then
+    _debug "Saved OCI_CLI_CONFIG_FILE not found, using default OCI CLI config" "$OCI_CLI_CONFIG_FILE"
+    _clearaccountconf_mutable OCI_CLI_CONFIG_FILE
+    _clearaccountconf_mutable OCI_CLI_TENANCY
+    _clearaccountconf_mutable OCI_CLI_USER
+    _clearaccountconf_mutable OCI_CLI_REGION
+    _clearaccountconf_mutable OCI_CLI_KEY
+    OCI_CLI_CONFIG_FILE="$_DEFAULT_OCI_CLI_CONFIG_FILE"
+    _oci_ignore_saved_api_key_config=1
   fi
 
   if [ "$_DEFAULT_OCI_CLI_CONFIG_FILE" != "$OCI_CLI_CONFIG_FILE" ]; then
@@ -258,6 +291,10 @@ _oci_config() {
 
   _DEFAULT_OCI_CLI_PROFILE="DEFAULT"
   OCI_CLI_PROFILE="${OCI_CLI_PROFILE:-$(_readaccountconf_mutable OCI_CLI_PROFILE)}"
+  OCI_CLI_PROFILE="$(_oci_strip_quotes "$OCI_CLI_PROFILE")"
+  if [ -z "$OCI_CLI_PROFILE" ]; then
+    OCI_CLI_PROFILE="$_DEFAULT_OCI_CLI_PROFILE"
+  fi
   if [ "$_DEFAULT_OCI_CLI_PROFILE" != "$OCI_CLI_PROFILE" ]; then
     _saveaccountconf_mutable OCI_CLI_PROFILE "$OCI_CLI_PROFILE"
   else
@@ -265,12 +302,15 @@ _oci_config() {
     _clearaccountconf_mutable OCI_CLI_PROFILE
   fi
 
-  OCI_CLI_TENANCY="${OCI_CLI_TENANCY:-$(_readaccountconf_mutable OCI_CLI_TENANCY)}"
+  if [ -z "$OCI_CLI_TENANCY" ] && [ -z "$_oci_ignore_saved_api_key_config" ]; then
+    OCI_CLI_TENANCY="$(_readaccountconf_mutable OCI_CLI_TENANCY)"
+  fi
+  OCI_CLI_TENANCY="$(_oci_strip_quotes "$OCI_CLI_TENANCY")"
   if [ "$OCI_CLI_TENANCY" ]; then
     _saveaccountconf_mutable OCI_CLI_TENANCY "$OCI_CLI_TENANCY"
   elif [ -f "$OCI_CLI_CONFIG_FILE" ]; then
     _debug "Reading OCI_CLI_TENANCY value from: $OCI_CLI_CONFIG_FILE"
-    OCI_CLI_TENANCY="${OCI_CLI_TENANCY:-$(_readini "$OCI_CLI_CONFIG_FILE" tenancy "$OCI_CLI_PROFILE")}"
+    OCI_CLI_TENANCY="$(_oci_strip_quotes "$(_readini "$OCI_CLI_CONFIG_FILE" tenancy "$OCI_CLI_PROFILE")")"
   fi
 
   if [ -z "$OCI_CLI_TENANCY" ]; then
@@ -278,34 +318,45 @@ _oci_config() {
     return 1
   fi
 
-  OCI_CLI_USER="${OCI_CLI_USER:-$(_readaccountconf_mutable OCI_CLI_USER)}"
+  if [ -z "$OCI_CLI_USER" ] && [ -z "$_oci_ignore_saved_api_key_config" ]; then
+    OCI_CLI_USER="$(_readaccountconf_mutable OCI_CLI_USER)"
+  fi
+  OCI_CLI_USER="$(_oci_strip_quotes "$OCI_CLI_USER")"
   if [ "$OCI_CLI_USER" ]; then
     _saveaccountconf_mutable OCI_CLI_USER "$OCI_CLI_USER"
   elif [ -f "$OCI_CLI_CONFIG_FILE" ]; then
     _debug "Reading OCI_CLI_USER value from: $OCI_CLI_CONFIG_FILE"
-    OCI_CLI_USER="${OCI_CLI_USER:-$(_readini "$OCI_CLI_CONFIG_FILE" user "$OCI_CLI_PROFILE")}"
+    OCI_CLI_USER="$(_oci_strip_quotes "$(_readini "$OCI_CLI_CONFIG_FILE" user "$OCI_CLI_PROFILE")")"
   fi
   if [ -z "$OCI_CLI_USER" ]; then
     _err "Error: unable to read OCI_CLI_USER from config file or environment variable."
     return 1
   fi
 
-  OCI_CLI_REGION="${OCI_CLI_REGION:-$(_readaccountconf_mutable OCI_CLI_REGION)}"
+  if [ -z "$OCI_CLI_REGION" ] && [ -z "$_oci_ignore_saved_api_key_config" ]; then
+    OCI_CLI_REGION="$(_readaccountconf_mutable OCI_CLI_REGION)"
+  fi
+  OCI_CLI_REGION="$(_oci_strip_quotes "$OCI_CLI_REGION")"
   if [ "$OCI_CLI_REGION" ]; then
     _saveaccountconf_mutable OCI_CLI_REGION "$OCI_CLI_REGION"
   elif [ -f "$OCI_CLI_CONFIG_FILE" ]; then
     _debug "Reading OCI_CLI_REGION value from: $OCI_CLI_CONFIG_FILE"
-    OCI_CLI_REGION="${OCI_CLI_REGION:-$(_readini "$OCI_CLI_CONFIG_FILE" region "$OCI_CLI_PROFILE")}"
+    OCI_CLI_REGION="$(_oci_strip_quotes "$(_readini "$OCI_CLI_CONFIG_FILE" region "$OCI_CLI_PROFILE")")"
   fi
   if [ -z "$OCI_CLI_REGION" ]; then
     _err "Error: unable to read OCI_CLI_REGION from config file or environment variable."
     return 1
   fi
 
-  OCI_CLI_KEY="${OCI_CLI_KEY:-$(_readaccountconf_mutable OCI_CLI_KEY)}"
+  if [ -z "$OCI_CLI_KEY" ] && [ -z "$_oci_ignore_saved_api_key_config" ]; then
+    OCI_CLI_KEY="$(_readaccountconf_mutable OCI_CLI_KEY)"
+  fi
   if [ -z "$OCI_CLI_KEY" ]; then
     _clearaccountconf_mutable OCI_CLI_KEY
-    OCI_CLI_KEY_FILE="${OCI_CLI_KEY_FILE:-$(_readini "$OCI_CLI_CONFIG_FILE" key_file "$OCI_CLI_PROFILE")}"
+    if [ -z "$OCI_CLI_KEY_FILE" ] && [ -f "$OCI_CLI_CONFIG_FILE" ]; then
+      OCI_CLI_KEY_FILE="$(_readini "$OCI_CLI_CONFIG_FILE" key_file "$OCI_CLI_PROFILE")"
+    fi
+    OCI_CLI_KEY_FILE="$(_oci_normalize_path "$OCI_CLI_KEY_FILE")"
     if [ "$OCI_CLI_KEY_FILE" ] && [ -f "$OCI_CLI_KEY_FILE" ]; then
       _debug "Reading OCI_CLI_KEY value from: $OCI_CLI_KEY_FILE"
       OCI_CLI_KEY=$(_base64 <"$OCI_CLI_KEY_FILE")
@@ -376,6 +427,7 @@ _get_zone() {
     if _oci_authz_error "$_oci_status" "$_oci_error_code" "$_oci_error_message"; then
       _oci_zone_lookup_authz_error=1
       _err "Error: OCI returned an authorization or permission failure for $h."
+      _err "OCI lookup status=${_oci_status:-unknown} code=${_oci_error_code:-none}."
       return 1
     fi
 
@@ -502,7 +554,7 @@ _signed_request_api_key() {
     rm -f "$_tmp_file"
   fi
 
-  _signed_header="Authorization: Signature version=\"$_sig_version\",keyId=\"$_sig_keyId\",algorithm=\"$_sig_alg\",headers=\"$_sig_headers\",signature=\"$_signature\""
+  _signed_header=$(printf 'Authorization: Signature version="%s",keyId="%s",algorithm="%s",headers="%s",signature="%s"' "$_sig_version" "$_sig_keyId" "$_sig_alg" "$_sig_headers" "$_signature")
   _secure_debug3 _signed_header "$_signed_header"
 
   if [ "$_curl_method" = "GET" ]; then
@@ -592,7 +644,7 @@ _signed_request_resource_principal() {
     return 1
   fi
 
-  _signed_header="Authorization: Signature version=\"$_sig_version\",keyId=\"$_sig_keyId\",algorithm=\"$_sig_alg\",headers=\"$_sig_headers\",signature=\"$_signature\""
+  _signed_header=$(printf 'Authorization: Signature version="%s",keyId="%s",algorithm="%s",headers="%s",signature="%s"' "$_sig_version" "$_sig_keyId" "$_sig_alg" "$_sig_headers" "$_signature")
   _secure_debug3 _string_to_sign "$_string_to_sign"
   _secure_debug3 _signed_header "$_signed_header"
 

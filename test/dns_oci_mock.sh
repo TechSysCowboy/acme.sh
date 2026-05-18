@@ -459,6 +459,23 @@ le_test_oci_lookup_ambiguous_404_falls_back() {
     _assert_contains "$MOCK_SIGNED_REQUESTS" '"rdata":"ambiguous-fallback-value"' "ambiguous fallback TXT value missing"
 }
 
+le_test_oci_lookup_404_auth_message_falls_back() {
+  _reset_oci_mocks
+  _mock_oci_zone_response "_acme-challenge.test.example.com" "404" "NotAuthorizedOrNotFound" "" "NotAuthorizedOrNotFound: Authorization failed or requested resource not found."
+  MOCK_OCI_ZONES="example.com"
+
+  _assert_success "live-shaped OCI 404 auth/not-found lookup should fall back to parent" \
+    dns_oci_add "_acme-challenge.test.example.com" "live-shaped-fallback-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _assert_contains "$MOCK_LOOKUP_LOG" "_acme-challenge.test.example.com|404|NotAuthorizedOrNotFound|" "live-shaped 404 lookup signal missing" &&
+    _assert_contains "$MOCK_SIGNED_REQUESTS" "GET|/20180115/zones/test.example.com||" "live-shaped 404 must continue to next candidate" &&
+    _assert_contains "$MOCK_SIGNED_REQUESTS" "GET|/20180115/zones/example.com||" "live-shaped 404 must reach parent zone" &&
+    _assert_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/example.com/records|" "live-shaped fallback PATCH target missing" &&
+    _assert_contains "$MOCK_SIGNED_REQUESTS" '"rdata":"live-shaped-fallback-value"' "live-shaped fallback TXT value missing" &&
+    _assert_not_contains "$MOCK_ERROR_LOG" "authorization or permission failure" "live-shaped 404 must not be reported as hard authz"
+}
+
 le_test_oci_lookup_visible_authz_fails_hard() {
   _reset_oci_mocks
   _mock_oci_zone_response "dev.example.com" "403" "NotAuthorized" "" "caller lacks zone read permission"
@@ -1381,6 +1398,49 @@ le_test_oci_auth_oci_cli_config_file_primary() {
     _assert_contains "$MOCK_SAVED_KEYS" "OCI_CLI_KEY=" "config key material was not persisted"
 }
 
+le_test_oci_auth_missing_saved_config_uses_default_config() {
+  _reset_oci_mocks
+  MOCK_OCI_ZONES="example.com"
+  mkdir -p "$HOME/.oci"
+  _mock_default_config="$HOME/.oci/config"
+  _mock_key_file="$HOME/.oci/oci-api-key.pem"
+  : >"$_mock_default_config"
+  printf '%s\n' "-----BEGIN PRIVATE KEY-----" "DEFAULT_CONFIG_PRIVATE_KEY" "-----END PRIVATE KEY-----" >"$_mock_key_file"
+  _mock_account_conf OCI_CLI_CONFIG_FILE "/tmp/missing-oci-config"
+  _mock_account_conf OCI_CLI_TENANCY "ocid1.tenancy.oc1..stale"
+  _mock_account_conf OCI_CLI_USER "ocid1.user.oc1..stale"
+  _mock_account_conf OCI_CLI_REGION "us-stale-1"
+  _mock_account_conf OCI_CLI_KEY "STALE_SAVED_KEY"
+  MOCK_OCI_READINI_TENANCY="ocid1.tenancy.oc1..default"
+  MOCK_OCI_READINI_USER="ocid1.user.oc1..default"
+  MOCK_OCI_READINI_REGION="us-ashburn-1"
+  MOCK_OCI_READINI_KEY_FILE="'~/.oci/oci-api-key.pem'"
+  unset OCI_CLI_CONFIG_FILE
+  unset OCI_CLI_PROFILE
+  unset OCI_CLI_TENANCY
+  unset OCI_CLI_USER
+  unset OCI_CLI_REGION
+  unset OCI_CLI_KEY
+  unset OCI_CLI_KEY_FILE
+
+  _assert_success "missing saved OCI config should fall back to default config" \
+    dns_oci_add "_acme-challenge.www.example.com" "default-config-value" || return 1
+
+  _dns_oci_mock_refresh_captures
+  _assert_contains "$MOCK_SIGNED_REQUESTS" "PATCH|/20180115/zones/example.com/records|" "default-config fallback did not reach PATCH" &&
+    _assert_eq "api_key" "$_oci_auth_mode" "default-config fallback should select api_key mode" &&
+    _assert_contains "$MOCK_CLEARED_KEYS" "OCI_CLI_CONFIG_FILE" "missing saved config path should be cleared" &&
+    _assert_contains "$MOCK_READINI_KEYS" "$_mock_default_config|tenancy|DEFAULT" "tenancy was not read from default config" &&
+    _assert_contains "$MOCK_READINI_KEYS" "$_mock_default_config|user|DEFAULT" "user was not read from default config" &&
+    _assert_contains "$MOCK_READINI_KEYS" "$_mock_default_config|region|DEFAULT" "region was not read from default config" &&
+    _assert_contains "$MOCK_READINI_KEYS" "$_mock_default_config|key_file|DEFAULT" "key_file was not read from default config" &&
+    _assert_contains "$MOCK_CLEARED_KEYS" "OCI_CLI_TENANCY" "stale saved tenancy should be cleared" &&
+    _assert_contains "$MOCK_CLEARED_KEYS" "OCI_CLI_USER" "stale saved user should be cleared" &&
+    _assert_contains "$MOCK_CLEARED_KEYS" "OCI_CLI_REGION" "stale saved region should be cleared" &&
+    _assert_contains "$MOCK_SAVED_KEYS" "OCI_CLI_KEY=" "default key material was not persisted" &&
+    _assert_not_contains "$MOCK_SAVED_KEYS" "STALE_SAVED_KEY" "stale saved key must not be reused"
+}
+
 le_test_oci_auth_resource_principal_does_not_persist() {
   _reset_oci_mocks
   MOCK_OCI_ZONES="example.com"
@@ -1411,7 +1471,9 @@ le_test_oci_auth_resource_principal_does_not_persist() {
 le_test_oci_auth_saved_config_survives_resource_principal_fallback() {
   _reset_oci_mocks
   MOCK_OCI_ZONES="example.com"
-  _mock_account_conf OCI_CLI_CONFIG_FILE "/tmp/saved-oci-config"
+  _mock_saved_config="$_DNS_OCI_MOCK_DIR/saved-oci-config"
+  : >"$_mock_saved_config"
+  _mock_account_conf OCI_CLI_CONFIG_FILE "$_mock_saved_config"
   _mock_account_conf OCI_CLI_TENANCY "ocid1.tenancy.oc1..saved"
   unset OCI_CLI_CONFIG_FILE
   unset OCI_CLI_TENANCY
@@ -1429,7 +1491,7 @@ le_test_oci_auth_saved_config_survives_resource_principal_fallback() {
 
   _dns_oci_mock_refresh_captures
   _assert_contains "$MOCK_ERROR_LOG" "_oci_auth_mode=resource_principal" "saved-config fallback should select RP mode" &&
-    _assert_contains "$MOCK_SAVED_KEYS" "OCI_CLI_CONFIG_FILE=/tmp/saved-oci-config" "saved config path should remain saved" &&
+    _assert_contains "$MOCK_SAVED_KEYS" "OCI_CLI_CONFIG_FILE=$_mock_saved_config" "saved config path should remain saved" &&
     _assert_contains "$MOCK_SAVED_KEYS" "OCI_CLI_TENANCY=ocid1.tenancy.oc1..saved" "saved tenancy should remain saved" &&
     _assert_not_contains "$MOCK_CLEARED_KEYS" "OCI_CLI_CONFIG_FILE" "saved config path must not be cleared" &&
     _assert_not_contains "$MOCK_CLEARED_KEYS" "OCI_CLI_TENANCY" "saved tenancy must not be cleared" &&
