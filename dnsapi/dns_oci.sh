@@ -3,9 +3,8 @@
 dns_oci_info='Oracle Cloud Infrastructure (OCI)
  API-key auth from OCI CLI config or OCI_CLI_* values is primary.
  Resource principal auth is a fallback when API-key auth is incomplete and OCI_RESOURCE_PRINCIPAL_VERSION=2.2 values are complete.
- delegated subzones are supported by selecting the most-specific accessible zone and falling back to parent zones on ambiguous lookup misses.
- DNS policy must allow zone read and TXT record mutation, for example read dns-zones and use dns-records.
-Site: Cloud.Oracle.com
+ DNS policy must allow zone read and TXT record write, for example "read dns-zones" and "use dns-records".
+Site: cloud.oracle.com
 Docs: github.com/acmesh-official/acme.sh/wiki/How-to-use-Oracle-Cloud-Infrastructure-DNS
 Options:
  OCI_CLI_TENANCY OCID of tenancy that contains the target DNS zone. Optional.
@@ -19,10 +18,10 @@ Options:
  OCI_RESOURCE_PRINCIPAL_REGION Region for resource principal DNS requests. Optional.
  OCI_RESOURCE_PRINCIPAL_PRIVATE_PEM_PASSPHRASE Path to passphrase file or inline passphrase value. Optional.
 Issues: github.com/acmesh-official/acme.sh/issues/3540
-Author: Avi Miller <me@dje.li>
 '
 
 # Copyright (c) 2021, Oracle and/or its affiliates
+# Copyright (c) 2026, Avi Miller <me@dje.li>
 #
 # The plugin will automatically use the default profile from an OCI SDK and CLI
 # configuration file, if it exists.
