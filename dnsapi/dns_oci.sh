@@ -183,11 +183,35 @@ _oci_strip_quotes() {
   printf "%s" "$1" | sed "s/^[\"']//; s/[\"']$//"
 }
 
+_oci_resolve_api_key_field() {
+  _oci_field_name=$1
+  _oci_field_ini_key=$2
+  eval "_oci_field_value=\$$_oci_field_name"
+  if [ -z "$_oci_field_value" ] && [ -z "$_oci_ignore_saved_api_key_config" ]; then
+    _oci_field_value=$(_readaccountconf_mutable "$_oci_field_name")
+  fi
+  _oci_field_value=$(_oci_strip_quotes "$_oci_field_value")
+  if [ "$_oci_field_value" ]; then
+    _saveaccountconf_mutable "$_oci_field_name" "$_oci_field_value"
+  elif [ -f "$OCI_CLI_CONFIG_FILE" ]; then
+    _debug "Reading $_oci_field_name value from: $OCI_CLI_CONFIG_FILE"
+    _oci_field_value=$(_oci_strip_quotes "$(_readini "$OCI_CLI_CONFIG_FILE" "$_oci_field_ini_key" "$OCI_CLI_PROFILE")")
+  fi
+  eval "$_oci_field_name=\$_oci_field_value"
+  if [ -z "$_oci_field_value" ]; then
+    _err "Error: unable to read $_oci_field_name from config file or environment variable."
+    return 1
+  fi
+  return 0
+}
+
 _oci_normalize_path() {
+  [ "$1" ] || return 0
   _oci_path=$(_oci_strip_quotes "$1")
 
   case "$_oci_path" in
-  [~]/*) printf "%s/%s" "$HOME" "${_oci_path#??}" ;;
+  [~]) printf "%s" "$HOME" ;;
+  [~]/*) printf "%s%s" "$HOME" "${_oci_path#?}" ;;
   *) printf "%s" "$_oci_path" ;;
   esac
 }
@@ -253,29 +277,26 @@ _oci_load_resource_principal_material() {
 _oci_config() {
 
   _DEFAULT_OCI_CLI_CONFIG_FILE="$HOME/.oci/config"
+  _oci_ignore_saved_api_key_config=""
   _oci_saved_config_file="$(_readaccountconf_mutable OCI_CLI_CONFIG_FILE)"
-  _oci_config_file_from_saved=""
   if [ -z "$OCI_CLI_CONFIG_FILE" ] && [ "$_oci_saved_config_file" ]; then
     OCI_CLI_CONFIG_FILE="$(_oci_normalize_path "$_oci_saved_config_file")"
-    _oci_config_file_from_saved=1
+    if [ ! -f "$OCI_CLI_CONFIG_FILE" ]; then
+      _debug "Saved OCI_CLI_CONFIG_FILE not found, using default OCI CLI config" "$OCI_CLI_CONFIG_FILE"
+      _clearaccountconf_mutable OCI_CLI_CONFIG_FILE
+      _clearaccountconf_mutable OCI_CLI_TENANCY
+      _clearaccountconf_mutable OCI_CLI_USER
+      _clearaccountconf_mutable OCI_CLI_REGION
+      _clearaccountconf_mutable OCI_CLI_KEY
+      OCI_CLI_CONFIG_FILE="$_DEFAULT_OCI_CLI_CONFIG_FILE"
+      _oci_ignore_saved_api_key_config=1
+    fi
   elif [ "$OCI_CLI_CONFIG_FILE" ]; then
     OCI_CLI_CONFIG_FILE="$(_oci_normalize_path "$OCI_CLI_CONFIG_FILE")"
   fi
 
   if [ -z "$OCI_CLI_CONFIG_FILE" ]; then
     OCI_CLI_CONFIG_FILE="$_DEFAULT_OCI_CLI_CONFIG_FILE"
-  fi
-
-  _oci_ignore_saved_api_key_config=""
-  if [ "$_oci_config_file_from_saved" ] && [ ! -f "$OCI_CLI_CONFIG_FILE" ]; then
-    _debug "Saved OCI_CLI_CONFIG_FILE not found, using default OCI CLI config" "$OCI_CLI_CONFIG_FILE"
-    _clearaccountconf_mutable OCI_CLI_CONFIG_FILE
-    _clearaccountconf_mutable OCI_CLI_TENANCY
-    _clearaccountconf_mutable OCI_CLI_USER
-    _clearaccountconf_mutable OCI_CLI_REGION
-    _clearaccountconf_mutable OCI_CLI_KEY
-    OCI_CLI_CONFIG_FILE="$_DEFAULT_OCI_CLI_CONFIG_FILE"
-    _oci_ignore_saved_api_key_config=1
   fi
 
   if [ "$_DEFAULT_OCI_CLI_CONFIG_FILE" != "$OCI_CLI_CONFIG_FILE" ]; then
@@ -297,51 +318,9 @@ _oci_config() {
     _clearaccountconf_mutable OCI_CLI_PROFILE
   fi
 
-  if [ -z "$OCI_CLI_TENANCY" ] && [ -z "$_oci_ignore_saved_api_key_config" ]; then
-    OCI_CLI_TENANCY="$(_readaccountconf_mutable OCI_CLI_TENANCY)"
-  fi
-  OCI_CLI_TENANCY="$(_oci_strip_quotes "$OCI_CLI_TENANCY")"
-  if [ "$OCI_CLI_TENANCY" ]; then
-    _saveaccountconf_mutable OCI_CLI_TENANCY "$OCI_CLI_TENANCY"
-  elif [ -f "$OCI_CLI_CONFIG_FILE" ]; then
-    _debug "Reading OCI_CLI_TENANCY value from: $OCI_CLI_CONFIG_FILE"
-    OCI_CLI_TENANCY="$(_oci_strip_quotes "$(_readini "$OCI_CLI_CONFIG_FILE" tenancy "$OCI_CLI_PROFILE")")"
-  fi
-
-  if [ -z "$OCI_CLI_TENANCY" ]; then
-    _err "Error: unable to read OCI_CLI_TENANCY from config file or environment variable."
-    return 1
-  fi
-
-  if [ -z "$OCI_CLI_USER" ] && [ -z "$_oci_ignore_saved_api_key_config" ]; then
-    OCI_CLI_USER="$(_readaccountconf_mutable OCI_CLI_USER)"
-  fi
-  OCI_CLI_USER="$(_oci_strip_quotes "$OCI_CLI_USER")"
-  if [ "$OCI_CLI_USER" ]; then
-    _saveaccountconf_mutable OCI_CLI_USER "$OCI_CLI_USER"
-  elif [ -f "$OCI_CLI_CONFIG_FILE" ]; then
-    _debug "Reading OCI_CLI_USER value from: $OCI_CLI_CONFIG_FILE"
-    OCI_CLI_USER="$(_oci_strip_quotes "$(_readini "$OCI_CLI_CONFIG_FILE" user "$OCI_CLI_PROFILE")")"
-  fi
-  if [ -z "$OCI_CLI_USER" ]; then
-    _err "Error: unable to read OCI_CLI_USER from config file or environment variable."
-    return 1
-  fi
-
-  if [ -z "$OCI_CLI_REGION" ] && [ -z "$_oci_ignore_saved_api_key_config" ]; then
-    OCI_CLI_REGION="$(_readaccountconf_mutable OCI_CLI_REGION)"
-  fi
-  OCI_CLI_REGION="$(_oci_strip_quotes "$OCI_CLI_REGION")"
-  if [ "$OCI_CLI_REGION" ]; then
-    _saveaccountconf_mutable OCI_CLI_REGION "$OCI_CLI_REGION"
-  elif [ -f "$OCI_CLI_CONFIG_FILE" ]; then
-    _debug "Reading OCI_CLI_REGION value from: $OCI_CLI_CONFIG_FILE"
-    OCI_CLI_REGION="$(_oci_strip_quotes "$(_readini "$OCI_CLI_CONFIG_FILE" region "$OCI_CLI_PROFILE")")"
-  fi
-  if [ -z "$OCI_CLI_REGION" ]; then
-    _err "Error: unable to read OCI_CLI_REGION from config file or environment variable."
-    return 1
-  fi
+  _oci_resolve_api_key_field OCI_CLI_TENANCY tenancy || return 1
+  _oci_resolve_api_key_field OCI_CLI_USER user || return 1
+  _oci_resolve_api_key_field OCI_CLI_REGION region || return 1
 
   if [ -z "$OCI_CLI_KEY" ] && [ -z "$_oci_ignore_saved_api_key_config" ]; then
     OCI_CLI_KEY="$(_readaccountconf_mutable OCI_CLI_KEY)"
